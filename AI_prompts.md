@@ -316,6 +316,62 @@ catalogue counts and tags. The store address is the only fact taken from the res
 
 ---
 
+## Problem 4: Create an account and login
+
+### Prompt
+
+> Problem 4: Create an account and login
+>
+> Build a normal create-account/login flow.
+>
+> Create account should include first name, last name, email, password, and confirm password fields
+> Log in should have email and password.
+>
+> I know the pages more or less have these, but let's also make sure they are built out properly. New accounts should go to the 'users' table. Make sure to store the passwords securely (as we discussed doing in either @[Lecture 4] or @[jsnode installation and usability] i forget which one) to ensure hackers, either human or AI bots, cannot access them.
+>
+> The seed database should already have a test user you can use while building it out.
+>
+> Email: test@campuscustoms.yale.edu
+> password: password
+> see the screenshot I sent for the Hash function lol i'm not typing that out
+>
+> The login should check a password by:
+> -never un-hashing the stored value. re-hash what the user typed and compare
+> -read the salt out of the stored string (middle piece) - do not make a new one at login
+> -hash the typed password with that same salt, and compare it to the stored hash. use a constant-time compare.
+> -signup and login must use the SAME hash settings (function, salt handling, and iteration count) -- if they differ then the right PW will not match -- do NOT mess this up
+>
+> I will need to ensure that I can log in as the test user and will need to create an account on the website so make sure it works.
+>
+> update output/harness.md with how the auth works, what is stored for a user, and how we protect passwords
+
+(Sent with a screenshot giving the hash parameters: PBKDF2-HMAC-SHA256, 120,000
+iterations, stored as `pbkdf2_sha256$salt$hash`.)
+
+**This corrected an earlier conclusion.** Problem 2 had found that the seeded accounts
+could not be logged into, because the iteration count is absent from the stored string.
+The count is not missing — it is specified by the assignment rather than stored. Verified
+against the seeded row before writing any code: 120,000 iterations matches; 100,000,
+260,000 and 600,000 do not. Decision D1 is superseded; there is no Argon2id path.
+
+Built [`backend/auth.py`](backend/auth.py) (one module, one set of constants, used by both
+signup and login), [`backend/sessions.py`](backend/sessions.py) (HttpOnly cookie over a
+server-side store), the auth routes in [`backend/main.py`](backend/main.py), user writes in
+[`backend/db.py`](backend/db.py), and the real forms with
+[`frontend/src/AuthContext.tsx`](frontend/src/AuthContext.tsx).
+
+Evidence: 19 unit checks pass in [`tests/test_auth.py`](tests/test_auth.py), including an
+independent re-derivation proving signup and login agree. End to end in the browser,
+logging in as the test user works through the form, creating an account works through the
+form, and signup → log out → log in again succeeds. The stored row for a new account is
+`pbkdf2_sha256` with a 32-character random salt that re-derives at 120,000 iterations and
+contains no plaintext. The session cookie is not readable by JavaScript, and neither auth
+response contains a hash. Full write-up in
+[`output/harness.md`](output/harness.md#problem-4-accounts-and-login). No model calls, so
+no Portkey credits.
+
+---
+
 <!--
 Template for the next problem. Copy below this line and replace N and the bracketed text.
 

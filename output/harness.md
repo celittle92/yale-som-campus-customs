@@ -27,6 +27,7 @@ get price and stock answers that come from the supplied database rather than fro
 
 - [Problem 2: The database](#problem-2-the-database)
 - [Problem 3: The website](#problem-3-the-website)
+- [Problem 4: Accounts and login](#problem-4-accounts-and-login)
 
 ---
 
@@ -160,11 +161,15 @@ re-read before anything is presented as current.
 5. **The password hashes are not in the format they appear to be.** The prefix says
    `pbkdf2_sha256`, which looks like Django, but Django's format has four
    `$`-separated fields including the iteration count. These have **three**: algorithm,
-   salt, and a 64-character hex digest. The iteration count is not stored anywhere, so
-   there is no way to recompute these hashes correctly, and we do not have the plaintext
-   passwords either. **The three seeded accounts therefore cannot be logged into.** The test
-   account's salt is also a fixed, human-readable string rather than a random one, which is
-   a fixture smell worth not copying.
+   salt, and a 64-character hex digest. The test account's salt is also a fixed,
+   human-readable string rather than a random one, which is a fixture smell worth not
+   copying.
+
+   > **Superseded in Problem 4.** This finding originally concluded that the seeded
+   > accounts could not be logged into, since the iteration count cannot be recovered from
+   > the string. The count is not missing — the assignment specifies it (120,000) rather
+   > than storing it. Verified against the seeded row. The accounts work; see
+   > [Problem 4](#problem-4-accounts-and-login).
 
 6. **`products_json` appears on all 11 assistant rows and no user rows**, sometimes as an
    empty array. The seeded data is telling us the intended contract: every assistant turn
@@ -184,20 +189,21 @@ re-read before anything is presented as current.
 All three questions raised by this analysis were settled by Christine on 2026-10-11.
 
 **D1. Authentication — leave the seeded accounts alone, build signup fresh.**
+*(Partly superseded in Problem 4 — see below.)*
 
 The three seeded rows stay exactly as they are: readable, browsable, and still the owners of
-the 22 seeded `chat_messages`. We do not guess their iteration count and we do not re-hash
-them. New accounts are hashed with **Argon2id** through `pwdlib[argon2]`, which embeds its
-own random salt per password.
+the 22 seeded `chat_messages`. We do not re-hash them.
 
-Consequences to build for:
+> **Superseded:** the Argon2id half of this decision is void. It rested on the seeded
+> hashes being unverifiable, which Problem 4 disproved. The assignment specifies
+> PBKDF2-HMAC-SHA256 at 120,000 iterations and requires signup and login to share
+> settings, so **both** paths use PBKDF2 and `pwdlib[argon2]` was dropped from
+> `requirements.txt`. There is no legacy-hash branch, because there is no legacy format.
 
-- A seeded account's stored hash is not a valid `pwdlib` hash, so verification will raise
-  rather than return `False`. Login must catch that and return the same generic
-  "invalid email or password" as any other failure — never a 500, and never a message that
-  reveals which accounts are legacy. That would be a user-enumeration oracle.
-- Signup still reports a duplicate email plainly, because a signup form that hides it is
-  unusable. That is the standard trade-off and it is deliberate.
+What survives unchanged:
+
+- Signup reports a duplicate email plainly, because a signup form that hides it is
+  unusable. Login stays deliberately vague for the opposite reason.
 - No password, hash, or salt is ever logged, returned by an endpoint, or written to the
   harness or the prompt log.
 
@@ -401,7 +407,157 @@ checked which breakpoint it was in.
 
 ### Still open after this problem
 
-- Accounts do nothing yet; the forms are disabled placeholders.
+- Accounts do nothing yet; the forms are disabled placeholders. *(Built in Problem 4.)*
 - The chat route is a stub. Problem 5 replaces it with the PydanticAI agent, which will
   receive the pre-filled size questions this page now sends.
 - Category filtering (D3) is not built, so the Products page lists all 102 unfiltered.
+
+---
+
+## Problem 4: Accounts and login
+
+### Correction to Problem 2, finding 5 — and to decision D1
+
+Problem 2 concluded that the seeded accounts **could not be logged into**, because their
+`pbkdf2_sha256$salt$hash` records hold only three fields and omit the iteration count that
+Django's four-field format carries. That reasoning was right about the format and wrong
+about the conclusion: the iteration count is not missing, it is simply **not stored**. The
+assignment specifies it.
+
+Christine supplied the parameters: **PBKDF2-HMAC-SHA256, 120,000 iterations**, stored as
+`pbkdf2_sha256$salt$hash`, with `password` as the test account's password. Verified
+against the seeded row before any code was written — 120,000 matches; 100,000, 260,000 and
+600,000 all fail. So the seeded accounts work, and **D1 is superseded**: there is no
+Argon2id path and no "legacy hashes cannot verify" case to handle.
+
+### What is stored for a user
+
+The supplied `users` table, unchanged — no columns were added.
+
+| Column | What goes in it | Why |
+|---|---|---|
+| `id` | autoincrement | Session identity, and the owner of `chat_messages` rows |
+| `name` | `"First Last"` | NOT NULL and predates the split columns, so it is always written |
+| `first_name`, `last_name` | as typed, trimmed | Lets the site greet someone by first name |
+| `email` | lower-cased, trimmed | The login identifier. Its unique index is what makes "already registered" a database answer rather than a check-then-insert race |
+| `password_hash` | `pbkdf2_sha256$salt$digest` | Never leaves the backend |
+| `created_at` | `datetime('now')` | UTC, by the table's own default |
+
+**What is never stored:** the password itself, in any form that can be read back. There is
+no plaintext column, no reversible encryption, and no recovery path — a forgotten password
+would have to be reset, not retrieved. Verified against the new row: the plaintext does not
+appear in it.
+
+### How passwords are protected
+
+One module, [`backend/auth.py`](../backend/auth.py), with one set of constants. Both signup
+and login call into it. That is deliberate: if the two paths ever used different settings,
+a correct password would stop matching, so there is only one place for them to disagree and
+a test that fails if they do.
+
+- **PBKDF2-HMAC-SHA256, 120,000 iterations.** Slow on purpose. The cost is paid once per
+  login by a user and a few hundred thousand times over by anyone grinding a stolen table.
+- **A unique random salt per password**, from `secrets.token_hex(16)` — 32 hex characters.
+  Generated at signup only. Salts are not secret; their job is to make identical passwords
+  produce different hashes, which is what makes precomputed rainbow tables useless.
+  Verified: all four salts in the table are distinct.
+- **Login never reverses the stored value**, because it cannot. It splits the record, takes
+  the salt **out of the middle of the stored string**, re-derives with the same settings,
+  and compares.
+- **Constant-time comparison** via `hmac.compare_digest`, so the check takes the same time
+  whether the first character differs or the last. A byte-by-byte `==` leaks how much of a
+  guess was right, which is enough to recover a digest one character at a time.
+- **Malformed records fail closed.** A record that is not three fields, or carries a
+  different algorithm, returns `False` rather than raising — a 500 on a damaged row would
+  itself confirm that the account exists.
+- **Nothing is logged, returned, or rendered.** The `PublicUser` model is an allow-list of
+  id, name, email; `password_hash` is not on it and must not be added. Verified: neither
+  the login nor the signup response contains the string `pbkdf2`.
+
+**A note on the house rule.** `AGENT.MD` prefers Argon2id and treats PBKDF2 as the weakest
+acceptable choice. The assignment mandates PBKDF2-HMAC-SHA256 at 120,000 iterations and
+requires signup and login to share settings, so using Argon2id for new accounts would
+break exactly the thing the problem warns about. The assignment wins. Worth recording that
+OWASP's current guidance for PBKDF2-HMAC-SHA256 is on the order of 600,000 iterations, so
+120,000 is the assignment's number rather than today's recommended one.
+
+### How the session works
+
+- On successful signup or login the backend mints a random opaque token
+  (`secrets.token_urlsafe(32)`) and sets it as an **HttpOnly** cookie, `SameSite=Lax`.
+  HttpOnly means JavaScript cannot read it, so cross-site scripting cannot steal the
+  session. Verified: `document.cookie` does not contain it.
+- The token is meaningless by itself — it is a key into a server-side map in
+  [`backend/sessions.py`](../backend/sessions.py). Nothing about the user travels in it.
+- The store is in memory, so sessions end when the server restarts. Honest for coursework;
+  a real deployment needs a shared store with expiry. `secure=False` for `http://localhost`
+  and must be `True` behind HTTPS.
+- This does not contradict **D2**. The cookie appears only after someone chooses to log in.
+  A signed-out visitor still gets no cookie, no IP logging, and no fingerprint.
+
+### Two places the design deliberately differs
+
+**Login is vague; signup is specific.** A failed login says "Invalid email or password"
+whether the address is unknown or the password is wrong — same status, same words — so the
+endpoint cannot be used to discover which addresses have accounts. Signup does the
+opposite and says plainly that an email is taken, because a signup form that hides it is
+unusable. That asymmetry is intentional.
+
+**A missing account still pays the hashing cost.** `login` hashes a throwaway value when
+no user is found, so an unknown email does not answer measurably faster than a wrong
+password. Without it, the timing difference is itself an account oracle.
+
+### Writes to the supplied database
+
+Problem 3 opened the database read-only. Accounts have to be written somewhere, so
+`db.connect_rw()` now exists — used **only** for `users` (and later `chat_messages`).
+Catalogue and inventory reads still go through the read-only `connect()`, so product data
+cannot be modified even by accident.
+
+### Verification
+
+Offline except for the local servers. No model calls, so no Portkey credits.
+
+**Unit checks** — `.venv/bin/python tests/test_auth.py`, 19 checks, all passing:
+
+| Group | What it proves |
+|---|---|
+| Stored format | Three `$` fields, `pbkdf2_sha256`, 64-hex digest |
+| Round trip | Correct verifies, wrong and empty rejected |
+| Salt handling | Two hashes of the same password differ, salts differ, both verify |
+| **Signup and login agree** | Iteration count is 120,000, and an independent re-derivation from the stored salt matches the stored digest |
+| Malformed records | Six bad shapes all return `False` without raising |
+| Seeded format | A seeded-style record verifies through the same code path |
+
+**End-to-end**, driven in the browser against the running servers:
+
+| Check | Result |
+|---|---|
+| Log in as `test@campuscustoms.yale.edu` / `password` | 200, returns Test User |
+| Session survives via cookie (`/api/auth/me`) | Returns the user |
+| Cookie readable by JavaScript | **No** — HttpOnly |
+| Login response contains a hash | **No** |
+| Wrong password | 401, "Invalid email or password." |
+| Unknown account | 401, **identical** status and message |
+| Signup with mismatched confirmation | 422, rejected server-side as well as in the form |
+| Signup with a 5-character password | 422 |
+| Signup, valid | 201, account created, signed in |
+| Duplicate email | 409, "An account with that email already exists." |
+| **Signup → log out → log in again** | 200 — the proof that both paths use the same settings |
+| Stored row for the new account | `pbkdf2_sha256`, 32-char salt, 64-char digest, re-derives at 120,000, no plaintext |
+| All salts in the table distinct | Yes |
+| Log in through the form | Lands on Products, nav shows "Hi, Test" and Log out |
+| Sign up through the form | Lands on Products, nav shows "Hi, Christine" |
+| Mismatched passwords in the form | Inline error, submit disabled |
+| Chat notice when signed in | "Signed in as Test." instead of the not-saved warning |
+| Browser console | Only the deliberate 401/422/409 negative tests |
+
+### Still open after this problem
+
+- Two accounts created during testing are in the `users` table (ids 4 and 5) and can be
+  deleted on request; they were left in place rather than removed unasked.
+- Sessions do not survive a backend restart, and there is no expiry or "log out everywhere".
+- There is no password reset, no rate limiting on login attempts, and no email
+  verification. None are asked for by the assignment; all three would matter in production.
+- `chat_messages` is not yet written. Problem 5 wires the agent, and D2's persistence for
+  signed-in users lands with it.

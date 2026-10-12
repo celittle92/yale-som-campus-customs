@@ -37,9 +37,22 @@ def data_dir() -> Path:
 
 
 def connect() -> sqlite3.Connection:
-    """A read-only connection. Nothing in this app writes to the supplied database."""
+    """A read-only connection. The catalogue and inventory are never written."""
     con = sqlite3.connect(f"file:{data_dir() / DB_NAME}?mode=ro", uri=True)
     con.row_factory = sqlite3.Row
+    return con
+
+
+def connect_rw() -> sqlite3.Connection:
+    """A writable connection, used **only** for `users` and `chat_messages`.
+
+    Accounts have to be written somewhere, and the assignment puts them in the supplied
+    database. Catalogue and inventory reads still go through `connect()` above, so the
+    product data cannot be modified even by accident.
+    """
+    con = sqlite3.connect(data_dir() / DB_NAME)
+    con.row_factory = sqlite3.Row
+    con.execute("pragma foreign_keys = on")
     return con
 
 
@@ -106,6 +119,61 @@ def get_inventory(product_id: str) -> list[dict[str, object]]:
     return [
         {"size": s, "quantity": by_size[s], "in_stock": by_size[s] > 0} for s in ordered
     ]
+
+
+class EmailAlreadyRegistered(Exception):
+    """Raised when a signup uses an email that already has an account."""
+
+
+def normalise_email(email: str) -> str:
+    """Emails are matched case-insensitively; `users.email` has a unique index."""
+    return email.strip().lower()
+
+
+def get_user_by_email(email: str) -> sqlite3.Row | None:
+    with connect() as con:
+        return con.execute(
+            "select * from users where lower(email) = ?", (normalise_email(email),)
+        ).fetchone()
+
+
+def get_user_by_id(user_id: int) -> sqlite3.Row | None:
+    with connect() as con:
+        return con.execute("select * from users where id = ?", (user_id,)).fetchone()
+
+
+def create_user(
+    first_name: str, last_name: str, email: str, password_hash: str
+) -> sqlite3.Row:
+    """Insert a new account.
+
+    `users.name` is NOT NULL and predates the split name columns, so all three are
+    written. The caller passes an already-hashed password; this function never sees a
+    plaintext one.
+    """
+    full_name = f"{first_name.strip()} {last_name.strip()}".strip()
+    try:
+        with connect_rw() as con:
+            cursor = con.execute(
+                "insert into users (name, email, password_hash, first_name, last_name)"
+                " values (?, ?, ?, ?, ?)",
+                (
+                    full_name,
+                    normalise_email(email),
+                    password_hash,
+                    first_name.strip(),
+                    last_name.strip(),
+                ),
+            )
+            user_id = cursor.lastrowid
+    except sqlite3.IntegrityError as exc:
+        # The unique index on email is what makes this a database answer rather than a
+        # check-then-insert race.
+        raise EmailAlreadyRegistered(email) from exc
+    found = get_user_by_id(int(user_id))
+    if found is None:  # pragma: no cover - would mean the insert vanished
+        raise RuntimeError("the new account could not be read back")
+    return found
 
 
 def image_path(product_id: str) -> Path | None:

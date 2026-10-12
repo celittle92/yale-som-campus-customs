@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { sendChatMessage } from '../api'
+import { useAuth } from '../AuthContext'
 import { useChat } from '../ChatContext'
 import type { ProductSummary } from '../types'
 
@@ -17,6 +19,7 @@ const GREETING: Message = {
 
 export default function ChatPanel() {
   const { open, prefill, openPanel, closePanel, consumePrefill } = useChat()
+  const { user } = useAuth()
   const [messages, setMessages] = useState<Message[]>([GREETING])
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
@@ -117,11 +120,17 @@ export default function ChatPanel() {
       {/* Decision D2: nothing a signed-out visitor types is stored, so say so rather
           than letting someone lose a conversation they assumed was saved. */}
       <p className="border-t border-line px-4 py-2 text-xs text-muted">
-        Not signed in, so this chat is not saved.{' '}
-        <a href="/login" className="underline hover:text-accent">
-          Log in
-        </a>{' '}
-        to keep it.
+        {user ? (
+          <>Signed in as {user.first_name ?? user.name}.</>
+        ) : (
+          <>
+            Not signed in, so this chat is not saved.{' '}
+            <Link to="/login" className="underline hover:text-accent">
+              Log in
+            </Link>{' '}
+            to keep it.
+          </>
+        )}
       </p>
 
       <form onSubmit={handleSubmit} className="flex gap-2 border-t border-line p-3">

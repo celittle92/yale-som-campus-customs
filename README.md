@@ -74,7 +74,23 @@ the front end reads `CAMPUS_CUSTOMS_API` to override the proxy target.
 | `GET /api/products` | Every product: id, name, type, description, colours, price, image URL |
 | `GET /api/products/{id}` | One product, plus search tags and stock for all six sizes |
 | `GET /api/products/{id}/image` | The product photo as JPEG |
+| `POST /api/auth/signup` | Create an account |
+| `POST /api/auth/login` | Log in; sets an HttpOnly session cookie |
+| `POST /api/auth/logout` | End the session |
+| `GET /api/auth/me` | Who is signed in, or `null` |
 | `POST /api/chat` | The shop assistant. A stub until Problem 5. |
+
+## Passwords
+
+Hashed with **PBKDF2-HMAC-SHA256, 120,000 iterations**, a unique random salt per password,
+stored as `pbkdf2_sha256$salt$digest`. Signup and login share one module and one set of
+constants ([`backend/auth.py`](backend/auth.py)), because settings that drift apart would
+stop correct passwords from matching.
+
+Login never reverses the stored value. It reads the salt out of the stored record,
+re-hashes what was typed, and compares with `hmac.compare_digest` in constant time.
+
+Run the checks: `.venv/bin/python tests/test_auth.py`
 
 ## Configuration
 

@@ -1,4 +1,10 @@
-import type { ChatReply, ProductDetail, ProductSummary } from './types'
+import type {
+  ChatReply,
+  ProductDetail,
+  ProductSummary,
+  PublicUser,
+  SignupInput,
+} from './types'
 
 // Everything goes through the FastAPI backend on the same origin (Vite proxies /api in
 // development). No API key ever reaches the browser.
@@ -36,6 +42,53 @@ export async function sendChatMessage(message: string): Promise<ChatReply> {
     throw new Error('The shop assistant is not available right now.')
   }
   return (await response.json()) as ChatReply
+}
+
+/**
+ * Auth. The password is sent once over the request body and is never stored in the
+ * browser — not in state after submit, not in localStorage, not in a cookie we set.
+ * The session is an HttpOnly cookie the backend sets, which JavaScript cannot read.
+ */
+async function postAuth<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) {
+    let detail = 'Something went wrong. Please try again.'
+    try {
+      const problem = await response.json()
+      if (typeof problem.detail === 'string') {
+        detail = problem.detail
+      } else if (Array.isArray(problem.detail) && problem.detail[0]?.msg) {
+        // FastAPI validation errors arrive as a list; show the first plainly.
+        detail = String(problem.detail[0].msg).replace(/^Value error,\s*/, '')
+      }
+    } catch {
+      // Keep the generic message.
+    }
+    throw new Error(detail)
+  }
+  return (await response.json()) as T
+}
+
+export function postLogin(email: string, password: string): Promise<PublicUser> {
+  return postAuth<PublicUser>('/api/auth/login', { email, password })
+}
+
+export function postSignup(input: SignupInput): Promise<PublicUser> {
+  return postAuth<PublicUser>('/api/auth/signup', input)
+}
+
+export async function postLogout(): Promise<void> {
+  await fetch('/api/auth/logout', { method: 'POST' })
+}
+
+export async function fetchCurrentUser(): Promise<PublicUser | null> {
+  const response = await fetch('/api/auth/me')
+  if (!response.ok) return null
+  return (await response.json()) as PublicUser | null
 }
 
 export function formatPrice(price: number): string {
