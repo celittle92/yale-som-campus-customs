@@ -1,0 +1,19 @@
+{
+  "_comment": "Written from the HW4 scenario before coding, per AGENTS.md. Provisional: filenames are our choice (the assignment names none until the final problem shows the file tree). Update as each problem names new scripts, prompts, and outputs, then run: python3 check_submission.py hw4",
+  "scripts": {
+    "backend/agent.py": "prompts/chat_agent.md"
+  },
+  "outputs": [
+    "backend/main.py",
+    "backend/db.py",
+    "frontend/package.json",
+    "frontend/src/App.tsx",
+    "prompts/chat_agent.md",
+    "requirements.txt",
+    ".env.example",
+    ".gitignore",
+    "README.md",
+    "AI_prompts.md",
+    "output/harness.md"
+  ]
+}

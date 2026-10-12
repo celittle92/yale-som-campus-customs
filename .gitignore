@@ -1,0 +1,32 @@
+# This project is pushed to a PUBLIC repo. Nothing secret and nothing the assignment
+# forbids committing may be tracked here.
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# The assignment forbids committing the database or the product images.
+# They live in the workspace-root "data hw4/" folder; these patterns are belt-and-braces
+# in case a copy is ever made inside the project.
+*.db
+*.sqlite
+*.sqlite3
+data/
+products/
+
+# Environments and dependencies
+.venv/
+venv/
+node_modules/
+__pycache__/
+*.py[cod]
+
+# Build output
+dist/
+build/
+.vite/
+coverage/
+
+# OS cruft
+.DS_Store
