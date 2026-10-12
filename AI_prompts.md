@@ -370,6 +370,28 @@ response contains a hash. Full write-up in
 [`output/harness.md`](output/harness.md#problem-4-accounts-and-login). No model calls, so
 no Portkey credits.
 
+### Follow-up prompts
+
+1. **What was lacking:** the harness recorded the automated checks but not Christine's own
+   confirmation that both flows work for a real person using the site.
+
+   > To wrap up problem 4, I need to add to the harness too the following:
+   > I can confirm I can log in as the test user that was created, it says 'hi test' and I was able to easily log out using the logout button crated. Yay.
+   >
+   > I also was able to successfully create a new account - I used my real name but a fake email and an easily guessed password - but it worked!
+
+   Added her confirmation verbatim to
+   [`output/harness.md`](output/harness.md#confirmed-by-christine-2026-10-11), with the
+   database-side evidence beside it: `users` now holds six rows, the three created through
+   the site all have a 32-character random salt and a 64-character digest, all six salts
+   are distinct, and no row stores anything resembling a plaintext password. Her account is
+   id 6.
+
+   Noted two things rather than leaving them implied. Her real name is only in the local
+   database, which is gitignored and outside the repository, so nothing personal reaches
+   the public repo. And the hashing protects a stolen table, not a guessable password at
+   the login form — that would need rate limiting, which is now listed as a known gap.
+
 ---
 
 <!--

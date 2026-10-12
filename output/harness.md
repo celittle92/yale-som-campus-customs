@@ -552,12 +552,43 @@ Offline except for the local servers. No model calls, so no Portkey credits.
 | Chat notice when signed in | "Signed in as Test." instead of the not-saved warning |
 | Browser console | Only the deliberate 401/422/409 negative tests |
 
+### Confirmed by Christine, 2026-10-11
+
+Christine ran both flows herself in the browser, independently of the automated checks
+above:
+
+> I can confirm I can log in as the test user that was created, it says 'hi test' and I
+> was able to easily log out using the logout button crated. Yay.
+>
+> I also was able to successfully create a new account - I used my real name but a fake
+> email and an easily guessed password - but it worked!
+
+The database confirms it from the other side. `users` now holds six rows: the three seeded
+accounts and three created through the running site, the last being Christine's. Every row
+created by this code has the same shape — `pbkdf2_sha256`, a 32-character random salt, a
+64-character digest — all six salts are distinct, and no row stores anything resembling a
+plaintext password.
+
+Two notes worth keeping:
+
+- **Her real name is in the database, and that is fine.** `campus_customs.db` is gitignored
+  and lives outside the repository, so nothing personal reaches the public repo. The
+  account details exist only on her machine.
+- **An easily guessed password is still an easily guessed password.** The hashing protects
+  the stored table if it is ever copied — 120,000 iterations and a unique salt make a
+  stolen digest expensive to crack. It does nothing against someone simply guessing the
+  password at the login form, which is what rate limiting would address. Fine for a
+  coursework account on localhost; worth naming so it is a known gap rather than an
+  assumed protection.
+
 ### Still open after this problem
 
-- Two accounts created during testing are in the `users` table (ids 4 and 5) and can be
-  deleted on request; they were left in place rather than removed unasked.
+- Three accounts created during testing are in the `users` table (ids 4, 5 and 6; id 6 is
+  Christine's). They can be deleted on request and were left in place rather than removed
+  unasked.
+- No rate limiting on login attempts, so password guessing is unthrottled.
 - Sessions do not survive a backend restart, and there is no expiry or "log out everywhere".
-- There is no password reset, no rate limiting on login attempts, and no email
-  verification. None are asked for by the assignment; all three would matter in production.
+- There is no password reset and no email verification. Neither is asked for by the
+  assignment; both would matter in production.
 - `chat_messages` is not yet written. Problem 5 wires the agent, and D2's persistence for
   signed-in users lands with it.
