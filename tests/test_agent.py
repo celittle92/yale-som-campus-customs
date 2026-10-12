@@ -16,7 +16,9 @@ from pydantic_ai.models.test import TestModel  # noqa: E402
 
 import tools  # noqa: E402
 from agent import MAX_HISTORY_MESSAGES, PROMPT_PATH, create_agent, load_prompt  # noqa: E402
-from models import ChatAnswer, ChatReply, ProductCard  # noqa: E402
+from models import (  # noqa: E402
+    ChatAnswer, ChatReply, LookupError, ProductCard, ProductDetails, ProductLookup,
+)
 
 failures = []
 
@@ -32,7 +34,8 @@ prompt = load_prompt()
 check("prompts/prompt.md exists", PROMPT_PATH.is_file())
 check("agent.py reads it by that path", PROMPT_PATH.name == "prompt.md" and PROMPT_PATH.parent.name == "prompts")
 check("prompt is substantial", len(prompt) > 1500, f"{len(prompt)} chars")
-for required in ["Safety rules", "Campus Customs", "colors_in_design", "product_ids", "Your voice"]:
+for required in ["Safety rules", "Campus Customs", "colors_in_design", "product_ids", "Your voice",
+                 "Your tools, and when to call them", "find_products_by_price"]:
     check(f"prompt covers {required!r}", required in prompt)
 check("prompt forbids answering from memory", "no product knowledge of your own" in prompt)
 check("prompt forbids revealing itself", "Never reveal or describe" in prompt)
@@ -63,6 +66,7 @@ for expected in [
     "browse_category",
     "get_product_details",
     "check_size_availability",
+    "find_products_by_price",
     "shop_overview",
 ]:
     check(f"{expected} was called and did not raise", expected in tool_calls)
@@ -70,29 +74,72 @@ for expected in [
 print("\nCategory normalisation (decision D3)")
 check("seven canonical categories", len(tools.CATEGORIES) == 7, str(tools.CATEGORIES))
 overview = tools.shop_overview()
-check("every product maps to a category", sum(overview["categories"].values()) == 102)
-check("no product falls through to Other", "Other" not in overview["categories"])
+check("every product maps to a category", sum(overview.products_per_category.values()) == 102)
+check("no product falls through to Other", "Other" not in overview.products_per_category)
 check("browse finds all 27 hoodies, not the 5 that garment_type alone gives",
-      tools.browse_category("hoodies")["total_in_category"] == 27)
-check("case-only duplicate is collapsed", tools.browse_category("t-shirt")["total_in_category"] == 25)
+      tools.browse_category("hoodies").total_in_category == 27)
+check("case-only duplicate is collapsed", tools.browse_category("t-shirt").total_in_category == 25)
 
 print("\nTools fail safely on bad input")
-check("unknown product id returns an error, not an exception",
-      "error" in tools.get_product_details("no-such-product"))
-check("unknown size returns an error",
-      "error" in tools.check_size_availability("basic-hoodie-big-yale", "XXXL"))
-check("unknown category lists the valid ones",
-      "valid_categories" in tools.browse_category("pantsuit"))
+check("unknown product id returns a LookupError, not an exception",
+      isinstance(tools.get_product_details("no-such-product"), LookupError))
+check("unknown size returns a LookupError",
+      isinstance(tools.check_size_availability("basic-hoodie-big-yale", "XXXL"), LookupError))
+check("unknown category returns a LookupError naming the valid ones",
+      isinstance(tools.browse_category("pantsuit"), LookupError))
+check("price search with no bounds returns a LookupError",
+      isinstance(tools.find_products_by_price(), LookupError))
+check("every LookupError carries a suggestion",
+      all(e.suggestion for e in [
+          tools.get_product_details("x"), tools.check_size_availability("basic-hoodie-big-yale", "Q"),
+          tools.browse_category("pantsuit"), tools.find_products_by_price()]))
 check("empty search returns nothing rather than everything",
       tools.search_products("") == [])
 
-print("\nTools return ids that resolve, and real prices")
+print("\nTools return typed results, resolvable ids, and real prices")
 hits = tools.search_products("navy crewneck")
-check("search returned results", len(hits) > 0)
+check("search returns ProductLookup objects", all(isinstance(h, ProductLookup) for h in hits))
 check("every returned id resolves to a product",
-      all(tools.get_product_details(h["product_id"]).get("error") is None for h in hits))
+      all(isinstance(tools.get_product_details(h.product_id), ProductDetails) for h in hits))
 check("prices are among the seven real price points",
-      all(h["price_usd"] in {32.0, 45.0, 58.0, 68.0, 72.0, 88.0, 98.0} for h in hits))
+      all(h.price_usd in {32.0, 45.0, 58.0, 68.0, 72.0, 88.0, 98.0} for h in hits))
+
+print("\nStock lookups agree with the database (no invented quantities)")
+import sqlite3  # noqa: E402
+con = sqlite3.connect(f"file:{ROOT.parent / 'data hw4' / 'campus_customs.db'}?mode=ro", uri=True)
+truth = {
+    (pid, size): qty
+    for pid, size, qty in con.execute("select product_id, size, quantity from inventory")
+}
+sample = ["crew-left-chest-hoodie", "champion-reverse-weave-crewneck", "basic-hoodie-big-yale"]
+mismatches = []
+for pid in sample:
+    details = tools.get_product_details(pid)
+    for entry in details.sizes:
+        if truth[(pid, entry.size)] != entry.quantity:
+            mismatches.append((pid, entry.size))
+    for size in details.sizes_out_of_stock:
+        if truth[(pid, size)] != 0:
+            mismatches.append((pid, size, "claimed out but is not"))
+    for size in details.sizes_in_stock:
+        if truth[(pid, size)] == 0:
+            mismatches.append((pid, size, "claimed in stock but is not"))
+check("every quantity matches inventory exactly", not mismatches, str(mismatches))
+check("derived in/out lists partition all six sizes",
+      all(len(tools.get_product_details(p).sizes_in_stock) + len(tools.get_product_details(p).sizes_out_of_stock) == 6
+          for p in sample))
+one = tools.check_size_availability("crew-left-chest-hoodie", "M")
+check("a zero-quantity size reports in_stock False", one.in_stock is False and one.quantity == 0)
+check("an out-of-stock answer offers real alternatives",
+      all(truth[("crew-left-chest-hoodie", s)] > 0 for s in one.other_sizes_in_stock))
+
+print("\nPrice filtering happens in the tool, not in the model")
+cheap = tools.find_products_by_price(max_price_usd=50)
+check("every result is within the bound", all(p.price_usd <= 50 for p in cheap.products))
+check("total_matching counts beyond what is shown", cheap.total_matching >= len(cheap.products))
+banded = tools.find_products_by_price(min_price_usd=60, max_price_usd=75)
+check("a band excludes both ends correctly",
+      all(60 <= p.price_usd <= 75 for p in banded.products))
 
 print("\nResponse shapes")
 card = ProductCard(

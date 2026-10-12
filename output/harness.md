@@ -29,6 +29,7 @@ get price and stock answers that come from the supplied database rather than fro
 - [Problem 3: The website](#problem-3-the-website)
 - [Problem 4: Accounts and login](#problem-4-accounts-and-login)
 - [Problem 5: The PydanticAI agent](#problem-5-the-pydanticai-agent)
+- [Problem 6: Tools for product info and stock](#problem-6-tools-for-product-info-and-stock)
 
 ---
 
@@ -826,6 +827,127 @@ next request used it, with no server restart.
 **Cost:** five billed exchanges in total — three for the original questions, one to
 re-test the content-filter fix, one to verify this change — at 2–3 model calls each. The
 two content-filtered attempts cost nothing.
+
+---
+
+## Problem 6: Tools for product info and stock
+
+Problem 5 shipped five tools returning loose dictionaries. This problem adds a sixth,
+converts every return value to a typed model, and rewrites the part of the instructions
+that decides when a tool must be called.
+
+### The six tools
+
+| Tool | Answers | Returns |
+|---|---|---|
+| `search_products(query, limit)` | "What do you have like X?" | `list[ProductLookup]` |
+| `browse_category(category, limit)` | "What hoodies do you have?" | `CategoryListing` |
+| `get_product_details(product_id)` | **description, price, stock in every size** | `ProductDetails` |
+| `check_size_availability(product_id, size)` | **"Do you have it in a medium?"** | `SizeCheck` |
+| `find_products_by_price(max, min, category, limit)` | "What's under $50?" | `PriceSearchResult` |
+| `shop_overview()` | "What do you sell?" | `ShopOverview` |
+
+The three things the problem asks for map onto `get_product_details` (description and
+price, and stock across all six sizes) and `check_size_availability` (stock for one size
+when the shopper names one). `find_products_by_price` is new: price questions previously
+went through `search_products` and left the model to compare numbers itself, which is
+exactly where it is least reliable. The comparison now happens in Python against real
+prices.
+
+The product-card linking from Problem 5 is unchanged — tools still return `product_id`
+values, and `main.py` still resolves them against the catalogue to build the cards.
+
+### Why these fields, and what was combined
+
+Tool results are now typed models in [`../backend/models.py`](../backend/models.py)
+rather than dictionaries, so the shape handed to the agent is documented and stable, and
+a renamed field becomes a type error here instead of a quietly wrong answer in the chat.
+
+**Fields renamed to carry their own meaning.** The model reads field names as context, so
+a name that states its units or its nature is a cheap way to prevent a wrong assumption:
+
+| Database column | Field given to the agent | Why |
+|---|---|---|
+| `price` | `price_usd` | States the currency, so the agent has nothing to infer |
+| `colors` | `colors_in_design` | The Problem 3 finding: these are colours *in* the garment, not colourways to choose. The old name invited the agent to offer them as options |
+| `quantity` | `quantity` + `in_stock` | `in_stock` is the boolean the agent actually needs; leaving it to compare against zero invites a slip |
+
+**Fields combined from two tables.** `ProductDetails` is a join: `catalogue` for
+description, price and colours, `inventory` for all six size rows. A shopper asking "how
+much is this and do you have my size" is one question, so it is one lookup rather than
+two round trips through the model.
+
+**Fields derived rather than left to the agent.** This is the important category — each
+one removes a step where a language model could go wrong:
+
+| Derived field | Computed as | Why not let the agent do it |
+|---|---|---|
+| `sizes_in_stock`, `sizes_out_of_stock` | Partition the six size rows on `quantity > 0` | Filtering six rows and reporting the result is arithmetic. Doing it in Python means "sold out in medium" cannot be a transcription error |
+| `total_units_in_stock` | Sum of quantities | Same reason; summing is not what the model is good at |
+| `has_recorded_colors` | `bool(colors)` | The three products with an empty colours array need a distinct answer, and an empty list is easy to overlook |
+| `other_sizes_in_stock` on `SizeCheck` | Sizes with stock, excluding the one asked about | Lets an out-of-stock answer offer a real alternative without a second lookup and without the agent guessing one |
+| `category` | `canonical_category(garment_type)` (decision D3) | 22 raw spellings would otherwise have to be reconciled by the model |
+| `total_in_category`, `total_matching` | Count before truncation | The agent shows at most six products but should be able to say how many exist. Without this it would have to guess, or imply six is all there is |
+
+**Fields deliberately withheld.** `image_file_path` and `search_tags` are not in any tool
+result. The agent never needs them — the backend builds cards from the id — and every
+field is re-sent on every turn, so withholding them is a standing token saving.
+
+**Errors are returned, not raised.** A bad id, an unknown size, an unknown category or a
+price search with no bounds returns a `LookupError` carrying an `error` and a
+`suggestion`. The agent can act on that and explain itself; an exception would surface as
+a failed request. Every `LookupError` carries a suggestion — checked in the tests.
+
+### Instructions
+
+[`../backend/prompts/prompt.md`](../backend/prompts/prompt.md) gained a "Your tools, and
+when to call them" section: a question-to-tool table, then the rule in plain terms —
+**price and stock questions always require a tool call, no exceptions**, not from memory,
+not from an earlier turn, not from the shopper's own guess, not from what seems
+reasonable for a garment like that.
+
+It also states what to do with each result (`price_usd` with cents, the pre-computed
+stock lists, `quantity` where `0` means none), permits reusing a result from earlier in
+the *same* conversation while noting a redundant lookup is free and a wrong price is not,
+and requires that an out-of-stock size be said directly and then followed with what is
+left.
+
+### Verification
+
+**Offline — 43 checks in [`../tests/test_agent.py`](../tests/test_agent.py), no credits.**
+New in this problem:
+
+| Check | What it proves |
+|---|---|
+| Every quantity matches `inventory` exactly, across three products and all six sizes | No invented stock numbers |
+| `sizes_in_stock` + `sizes_out_of_stock` partition all six sizes | The derived lists cannot silently drop one |
+| A zero-quantity size reports `in_stock` false | Out of stock is unambiguous |
+| An out-of-stock answer's alternatives really are in stock | The offer is not a guess |
+| Every price-filter result is within its bound, both ends | Filtering happens in the tool |
+| `total_matching` ≥ products shown | Counts are real, not the page size |
+| Four bad-input cases return `LookupError`, each with a suggestion | Failures are recoverable |
+| `TestModel` calls all six tools without raising | All six are wired |
+
+**Live — two exchanges, both checked against the database afterwards.**
+
+> **"How much is the Crew Left Chest Hoodie and what is it like? Do you have it in medium?"**
+>
+> The Crew Left Chest Hoodie is $68.00. It's a navy blue pullover with a drawstring hood,
+> kangaroo pocket, ribbed cuffs and hem, and white YALE CREW lettering on the left chest.
+> Medium is sold out; it's available in XS, S, L, XL, and XXL.
+
+Database: price `68.0`; stock `M: 0`, `XS: 20, S: 12, L: 8, XL: 20, XXL: 5`. Price, cut
+and every size correct, and the out-of-stock size stated plainly before the alternatives.
+
+> **"what do you have under $40?"**
+>
+> There are 25 items under $40. The six shown here include $32.00 T-shirts…
+
+Database: exactly 25 products under $40. The count came from `total_matching`, not from
+counting cards. The reply also still avoids narrating the card names, so the Problem 5.1
+fix is holding.
+
+**Cost:** two billed exchanges, bringing HW4 to seven.
 - Sessions do not survive a backend restart, and there is no expiry or "log out everywhere".
 - There is no password reset and no email verification. Neither is asked for by the
   assignment; both would matter in production.

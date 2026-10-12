@@ -22,6 +22,7 @@ from models import ChatAnswer
 from tools import (
     browse_category,
     check_size_availability,
+    find_products_by_price,
     get_product_details,
     search_products,
     shop_overview,
@@ -62,6 +63,7 @@ def create_agent(model) -> Agent[None, ChatAnswer]:
         browse_category,
         get_product_details,
         check_size_availability,
+        find_products_by_price,
         shop_overview,
     ):
         agent.tool_plain(tool)

@@ -491,6 +491,46 @@ How the front end talks to FastAPI and how the agent is loaded are written up in
 
 ---
 
+## Problem 6: Tools: Product info and stock
+
+### Prompt
+
+> Problem 6: Tools: Product info and stock
+>
+> Give the agent tools that look up real info from campus_customs.db:
+> product description
+> price
+> how many are in stock (by size when customer asks)
+>
+> I like how we have the agent built rn though that links to product being asked about so don't remove that.
+>
+> The agent MUST use the database, and it should not invent prices or QTY. If a size is out of stock, the agent should say so clearly. No ghost info.
+>
+> Expand prompts/prompt.md so agent knows to call these tools for the price and stock questions. Add or update return types in models.py
+>
+> in output/harness.md, list each tool that was built, and explain which model fields that were chosen for lookup results and why (note that we combined certain fields and we should be clear about that too)
+
+Converted every tool return from a loose dictionary to a typed model in
+[`backend/models.py`](backend/models.py), added a sixth tool
+(`find_products_by_price`) so price comparisons happen in Python rather than in the model,
+and rewrote the tool-selection section of
+[`backend/prompts/prompt.md`](backend/prompts/prompt.md) with a question-to-tool table and
+the rule that price and stock questions always require a tool call. The product-card
+linking from Problem 5 is untouched.
+
+The full tool list, the field choices, the fields combined from `catalogue` and
+`inventory`, and the fields derived in Python rather than left to the model are written up
+in [`output/harness.md`](output/harness.md#problem-6-tools-for-product-info-and-stock).
+
+Evidence: 43 offline checks pass, including a direct cross-check that every quantity the
+tools report matches `inventory` exactly across three products and all six sizes. Live,
+the agent quoted the Crew Left Chest Hoodie at $68.00, described it correctly, and said
+"Medium is sold out; it's available in XS, S, L, XL, and XXL" — which matches the database
+row for row. Asked what is under $40 it answered "25 items", which is exactly the count in
+the catalogue. Cost: two billed exchanges.
+
+---
+
 <!--
 Template for the next problem. Copy below this line and replace N and the bracketed text.
 
