@@ -294,6 +294,26 @@ catalogue counts and tags. The store address is the only fact taken from the res
    not-allowed when out, `aria-pressed` for the selected one, and the native tooltip
    replaced by an `aria-label` carrying the stock count.
 
+3. **What was lacking:** the work was done but nobody had checked it line by line against
+   what Problem 3 actually asked for.
+
+   > Cool. It looks good. Are all the specs of Problem 3 covered now?
+
+   Audited every clause of the prompt against the running site, driving the real pages
+   rather than re-reading the source. All nine covered; the table is in
+   [`output/harness.md`](output/harness.md#32-spec-coverage-audit). The image-on-left
+   assertion failed on first measurement because the preview pane sits below the `lg`
+   breakpoint where the layout intentionally stacks; re-measured at 1280×900 it passes.
+
+4. **What was lacking:** the audit found no code to change, so it was not yet recorded
+   anywhere.
+
+   > commit this. i'm good with the responsive design, that's great.
+
+   The working tree was already clean — the audit only read the running site. Recorded the
+   coverage table and the breakpoint finding in the harness and committed that, and noted
+   Christine's approval of the stacking behaviour, so the `lg` breakpoint stays.
+
 ---
 
 <!--

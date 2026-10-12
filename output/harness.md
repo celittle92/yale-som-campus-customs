@@ -372,6 +372,33 @@ stock and `not-allowed` when not; no `title` attributes remain; selecting M show
 "Size M — 15 in stock"; the ask button opens the panel, pre-fills the question and focuses
 the input; clicking M again sets `aria-pressed` back to false. Clean `tsc -b && vite build`.
 
+### 3.2 Spec coverage audit
+
+Checked each line of the Problem 3 prompt against the running site rather than against the
+source, by driving the real pages in a browser.
+
+| Spec | Evidence |
+|---|---|
+| React + Vite + TypeScript | Clean `tsc -b && vite build` |
+| Nav bar: Home, Products, About Us, Log In, Create Account | All five links clicked in sequence; each routes and renders real content |
+| Home and About Us in Christine's voice, not copied | Written fresh from our own catalogue counts and tags; the store address is the only researched fact |
+| Card shows catalogue image, name, price, short description | `src` is `/api/products/{id}/image`, resolved from `catalogue.image_file_path`; description clamps to 3 lines |
+| Card click opens the single-item page | Real click on the Benjamin Franklin 1/4 Zip card landed on `/products/benjamin-franklin-1-4-zip` |
+| Large image on the **left**, text on the other side | At 1280×900: image x=85–619, text starts x=660, tops aligned |
+| Detail page shows description, price, sizes/stock | Plus colours, search tags, and selectable sizes |
+| Floating chat panel, bottom right, stub | Posts to `/api/chat` and renders the reply |
+| FastAPI in `backend/main.py` serving products and images | Five routes, read-only database access |
+
+**One finding worth keeping.** The image-on-left assertion first failed. The cause was not
+the layout but the measurement: the preview pane is narrower than the `lg` breakpoint
+(1024px), where the two-column grid intentionally stacks to image-above-text. Re-measured
+at 1280×900 it passes. Christine reviewed the stacking behaviour and approved it, so the
+breakpoint stays at `lg`; moving it to `md` would put the columns side by side on tablets.
+
+Worth remembering as a method note: a layout assertion measured at one viewport says
+nothing about another, and a responsive layout can look broken to a test that never
+checked which breakpoint it was in.
+
 ### Still open after this problem
 
 - Accounts do nothing yet; the forms are disabled placeholders.
