@@ -49,7 +49,8 @@ front end in a browser.
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python -m uvicorn backend.main:app --reload --port 8010
+cd backend
+../.venv/bin/python -m uvicorn main:app --reload --port 8000
 ```
 
 **Front end**, in a second terminal:
@@ -62,9 +63,9 @@ npm run dev
 
 Then open http://localhost:5174.
 
-Ports 8010 and 5174 are used because 8000 and 5173 were already taken on the development
-machine. Change them in `frontend/vite.config.ts` and the `uvicorn` command if you like;
-the front end reads `CAMPUS_CUSTOMS_API` to override the proxy target.
+The API runs on **8000**, as the assignment specifies. The front end uses 5174 because
+5173 was taken on the development machine; change it in `frontend/vite.config.ts`. The
+proxy target can be overridden with `CAMPUS_CUSTOMS_API`.
 
 ## API
 

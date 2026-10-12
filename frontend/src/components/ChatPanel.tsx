@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { sendChatMessage } from '../api'
+import { formatPrice, sendChatMessage } from '../api'
 import { useAuth } from '../AuthContext'
 import { useChat } from '../ChatContext'
 import type { ProductSummary } from '../types'
@@ -93,15 +93,48 @@ export default function ChatPanel() {
 
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
         {messages.map((message, index) => (
-          <div
-            key={index}
-            className={
-              message.role === 'user'
-                ? 'ml-auto max-w-[85%] rounded-lg bg-accent px-3 py-2 text-sm text-white'
-                : 'mr-auto max-w-[85%] rounded-lg bg-cream px-3 py-2 text-sm text-body'
-            }
-          >
-            {message.content}
+          <div key={index}>
+            <div
+              className={
+                message.role === 'user'
+                  ? 'ml-auto w-fit max-w-[85%] rounded-lg bg-accent px-3 py-2 text-sm text-white'
+                  : 'mr-auto w-fit max-w-[85%] rounded-lg bg-cream px-3 py-2 text-sm text-body'
+              }
+            >
+              {message.content}
+            </div>
+
+            {/* Cards the assistant chose to show. Every one is a real catalogue row
+                resolved by the backend from a product id, so the price and image here
+                came out of the database, not out of the model. */}
+            {message.products && message.products.length > 0 && (
+              <ul className="mt-2 space-y-2">
+                {message.products.map((product) => (
+                  <li key={product.product_id}>
+                    <Link
+                      to={`/products/${product.product_id}`}
+                      onClick={closePanel}
+                      className="flex items-center gap-3 rounded-lg border border-line bg-paper p-2 transition-colors hover:border-accent hover:bg-accent-soft"
+                    >
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        loading="lazy"
+                        className="h-14 w-14 flex-none rounded object-cover"
+                      />
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-ink">
+                          {product.name}
+                        </span>
+                        <span className="block text-sm text-accent">
+                          {formatPrice(product.price)}
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         ))}
         {sending && (

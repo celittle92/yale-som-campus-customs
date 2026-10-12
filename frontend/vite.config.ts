@@ -12,8 +12,7 @@ export default defineConfig({
     // browser and no backend URL baked into the bundle.
     proxy: {
       '/api': {
-        // 8000 was already taken on this machine, so the API runs on 8010.
-        target: process.env.CAMPUS_CUSTOMS_API ?? 'http://127.0.0.1:8010',
+        target: process.env.CAMPUS_CUSTOMS_API ?? 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
     },

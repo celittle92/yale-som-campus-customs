@@ -176,6 +176,67 @@ def create_user(
     return found
 
 
+def recent_messages(user_id: int, limit: int) -> list:
+    """The tail of a signed-in shopper's conversation, oldest first, as PydanticAI
+    message objects.
+
+    Bounded on purpose: everything returned here is re-sent to the model on every turn
+    and paid for again, so this is a recent slice rather than the whole conversation.
+    """
+    from pydantic_ai.messages import (
+        ModelRequest,
+        ModelResponse,
+        TextPart,
+        UserPromptPart,
+    )
+
+    with connect() as con:
+        rows = con.execute(
+            "select role, content from chat_messages where user_id = ?"
+            " order by id desc limit ?",
+            (user_id, limit),
+        ).fetchall()
+
+    history: list = []
+    for row in reversed(rows):  # back to oldest-first for the model
+        if row["role"] == "user":
+            history.append(ModelRequest(parts=[UserPromptPart(content=row["content"])]))
+        elif row["role"] == "assistant":
+            history.append(ModelResponse(parts=[TextPart(content=row["content"])]))
+    return history
+
+
+def save_exchange(
+    user_id: int, question: str, reply: str, products: list[dict[str, object]]
+) -> None:
+    """Write one turn to `chat_messages`.
+
+    Decision D2: this is only ever called for a signed-in shopper. The schema enforces it
+    too — `user_id` is NOT NULL with a foreign key to `users` — so an anonymous
+    conversation cannot be stored even by mistake.
+
+    `products_json` snapshots the cards as shown, matching the seeded rows, where only
+    assistant messages carry it.
+    """
+    with connect_rw() as con:
+        con.execute(
+            "insert into chat_messages (user_id, role, content) values (?, 'user', ?)",
+            (user_id, question),
+        )
+        con.execute(
+            "insert into chat_messages (user_id, role, content, products_json)"
+            " values (?, 'assistant', ?, ?)",
+            (user_id, reply, json.dumps(products)),
+        )
+
+
+def clear_messages(user_id: int) -> int:
+    """Delete one shopper's conversation. Theirs to erase, per D2."""
+    with connect_rw() as con:
+        cursor = con.execute("delete from chat_messages where user_id = ?", (user_id,))
+        return cursor.rowcount
+
+
 def image_path(product_id: str) -> Path | None:
     """Resolve a product's image, refusing anything that escapes the image folder.
 

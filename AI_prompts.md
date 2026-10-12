@@ -394,6 +394,59 @@ no Portkey credits.
 
 ---
 
+## Problem 5: PydanticAI agent backend
+
+### Prompt
+
+> Problem 5: PydanticAI agent backend
+>
+> Now we need to build the agent for the shop chatbot as a PydanticAI agent behind the FastAP that is plugged into the front-end chat widget. The API app should be put in backend/main.py which is the file to be ran with Uvicorn.
+>
+> Keep the agent as these four files next to it (same idea as what we did for @[HW3] ) :
+> backend/prompts/prompt.md - the system prompt (grow this file later)
+> backend/agent.py - agent entry/wiring
+> backend/tools.py - tools the agent can call
+> backend/models.py - Pydantic/PydanticAI structured types
+>
+> in main.py expose a chat route so a message from the created website returns a reply from the agent (and whatever else needed for products/auth) -- the AI model API Key is needed for this agent!!
+>
+> Put the Campus Customs voice we created and safety basics (industry standard on top of any standard we've established) into prompts/prompt.md -- we will actually expand tools and safety later but let's just add what we have for now bc we are here.
+>
+> Start or update the types in models.py for chat replies/product cards if needed.
+>
+> In output/harness.md, note how the front end talks to FastAPI and how the agent is loaded (including prompt file and model).
+>
+> Make sure that the backend runs from the backend/ folder like this:
+> uvicorn main:app --reload --port 8000
+>
+> ^^^ knowing we had to use a somewhat different port than 8000, let's move everything to port 8000 so its consistent with what the professor/TA/AI grader whoever is looking for.
+
+Built the four agent files — [`backend/prompts/prompt.md`](backend/prompts/prompt.md),
+[`backend/agent.py`](backend/agent.py), [`backend/tools.py`](backend/tools.py),
+[`backend/models.py`](backend/models.py) — and wired the chat route in
+[`backend/main.py`](backend/main.py). Moved everything to port 8000, which meant making
+`backend/` a plain folder rather than a package (flat imports, `app_config.py` moved into
+it) so `uvicorn main:app` works from inside `backend/`.
+
+The agent returns product **ids**, never product data; `main.py` resolves them against the
+catalogue, so every price and image on the page comes from the database and an invented id
+is dropped and logged. Decision D3 landed here, since `browse_category` needed it:
+asking for hoodies now returns all 27 rather than the 5 that raw `garment_type` gives.
+Decision D2 is implemented too — history is loaded and saved for signed-in shoppers only,
+bounded to 10 messages because replayed turns are re-paid every time.
+
+Evidence: 33 offline checks pass in [`tests/test_agent.py`](tests/test_agent.py) using
+PydanticAI's `TestModel`, which drives the real prompt, tools and output validation with a
+stub in place of the LLM — **no credits spent**. `python3 check_submission.py hw4` reports
+0 fail, 0 warn, 36 ok, confirming `agent.py` both calls a model and loads its prompt file.
+How the front end talks to FastAPI and how the agent is loaded are written up in
+[`output/harness.md`](output/harness.md#problem-5-the-pydanticai-agent).
+
+Not yet done: a live model call. That is the first paid step in HW4 and is waiting on
+Christine's go-ahead.
+
+---
+
 <!--
 Template for the next problem. Copy below this line and replace N and the bracketed text.
 

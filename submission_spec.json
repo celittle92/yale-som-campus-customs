@@ -1,7 +1,7 @@
 {
-  "_comment": "Written from the HW4 scenario before coding, per AGENTS.md, and updated as each problem names new files. backend/agent.py and prompts/chat_agent.md are the Problem 5 agent and do not exist yet; their FAILs are the to-do list. Check with: python3 check_submission.py hw4",
+  "_comment": "Written from the HW4 scenario before coding, per AGENTS.md, and updated as each problem names new files. The assignment places the runtime prompt at backend/prompts/prompt.md, so that is the path used. Check with: python3 check_submission.py hw4",
   "scripts": {
-    "backend/agent.py": "prompts/chat_agent.md"
+    "backend/agent.py": "backend/prompts/prompt.md"
   },
   "outputs": [
     "backend/main.py",
@@ -26,7 +26,12 @@
     "backend/sessions.py",
     "frontend/src/AuthContext.tsx",
     "tests/test_auth.py",
-    "prompts/chat_agent.md",
+    "backend/agent.py",
+    "backend/tools.py",
+    "backend/models.py",
+    "backend/prompts/prompt.md",
+    "backend/app_config.py",
+    "tests/test_agent.py",
     "requirements.txt",
     ".env.example",
     ".gitignore",

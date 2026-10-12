@@ -59,13 +59,24 @@ import below resolves only inside that workspace, not in a standalone clone of t
   tracked, then from the Terminal panel in `hw4/`:
   `../.tools/gh/bin/gh repo create yale-som-campus-customs --public --source=. --remote=origin --push`
   The submitted Canvas URL is that repo's URL.
-- **Ports: the API is on 8010 and the site on 5174**, not the usual 8000/5173, because both
-  defaults were already taken on this machine by other projects. Don't kill those; the
-  numbers live in `frontend/vite.config.ts`, the CORS list in `backend/main.py`, and the
-  workspace `.claude/launch.json`.
-- Run the API from `hw4/`: `.venv/bin/python -m uvicorn backend.main:app --reload --port 8010`.
-  Run the site from `hw4/frontend/`: `npm run dev` (use the workspace Node, see above).
-  Vite proxies `/api` to the backend, so only the site gets opened in a browser.
+- **The API runs on port 8000 from inside `backend/`**, because the assignment specifies
+  `uvicorn main:app --reload --port 8000`. So `backend/` is **not** a package: modules
+  import each other flatly (`from db import ...`), and `app_config.py` lives in `backend/`.
+  Don't reintroduce `backend/__init__.py` or relative imports.
+  Run it: `cd hw4/backend && ../.venv/bin/python -m uvicorn main:app --reload --port 8000`.
+- The site is on **5174**, not 5173, because another Vite app on this machine holds 5173.
+  Run it from `hw4/frontend/`: `npm run dev` (workspace Node, see above). Vite proxies
+  `/api` to 8000, so only the site is opened in a browser.
+- A long-running `Python` process on this machine has held port 8000 since before this
+  project. It is not ours — ask before killing it:
+  `lsof -nP -iTCP:8000 -sTCP:LISTEN` then `kill <pid>`.
+- The agent is four files in `backend/`: `prompts/prompt.md` (system prompt, read at
+  runtime), `agent.py` (wiring only), `tools.py` (five read-only catalogue tools),
+  `models.py` (structured types). The agent returns product **ids**; `main.py` resolves
+  them against the catalogue, so no price or image ever comes from the model.
+- Offline agent tests use PydanticAI's `TestModel` and spend nothing:
+  `hw4/.venv/bin/python tests/test_agent.py` (33 checks) and `tests/test_auth.py` (19).
+  Use these instead of live calls to verify an edit.
 - Front-end build and type check, from `hw4/frontend/`: `npm run build`.
 - Sandboxed Bash cannot reach these local ports with `curl` (connection refused), and the
   preview tools can. Verify the API through the browser rather than the shell.

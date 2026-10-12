@@ -6,6 +6,7 @@ explicit stub rather than being left out.
 """
 from __future__ import annotations
 
+import logging
 import sqlite3
 from dataclasses import asdict
 
@@ -14,9 +15,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
-from . import sessions
-from .auth import hash_password, verify_password
-from .db import (
+import sessions
+from agent import MAX_HISTORY_MESSAGES, build_agent, model_name
+from auth import hash_password, verify_password
+from db import (
     EmailAlreadyRegistered,
     create_user,
     get_inventory,
@@ -25,7 +27,11 @@ from .db import (
     get_user_by_id,
     image_path,
     list_products,
+    recent_messages,
+    save_exchange,
 )
+
+logger = logging.getLogger("campus_customs")
 
 app = FastAPI(
     title="Campus Customs API",
@@ -134,12 +140,18 @@ class ChatRequest(BaseModel):
 class ChatReply(BaseModel):
     reply: str
     products: list[ProductSummary] = []
+    saved: bool = False
 
 
 @app.get("/api/health")
 def health() -> dict[str, object]:
-    """Cheap readiness check that also proves the database is reachable."""
-    return {"status": "ok", "products": len(list_products())}
+    """Cheap readiness check. Proves the database is reachable and reports the model the
+    assistant is configured to use. Makes no model call."""
+    return {
+        "status": "ok",
+        "products": len(list_products()),
+        "model": model_name(),
+    }
 
 
 @app.get("/api/products", response_model=list[ProductSummary])
@@ -224,16 +236,46 @@ def me(campus_customs_session: str | None = Cookie(default=None)) -> PublicUser 
 
 
 @app.post("/api/chat", response_model=ChatReply)
-def chat(request: ChatRequest) -> ChatReply:
-    """Stub. Problem 5 replaces this with the PydanticAI agent.
+async def chat(
+    request: ChatRequest,
+    campus_customs_session: str | None = Cookie(default=None),
+) -> ChatReply:
+    """Ask the shop assistant.
 
-    It answers in the shape the real endpoint will use — a reply plus the products to
-    show on the page — so the front end does not change when the agent arrives.
+    The agent returns product **ids**; the cards are built here from catalogue rows, so
+    every price, colour and image on the page came out of the database rather than out of
+    the model.
+
+    Persistence follows decision D2: a signed-in shopper's turns are written to
+    `chat_messages`, and a signed-out visitor's are not stored at all.
     """
-    return ChatReply(
-        reply=(
-            "I am not connected to the shop assistant yet. Once I am, I will be able to "
-            "look up prices, sizes, and what is actually in stock."
-        ),
-        products=[],
-    )
+    user_id = sessions.user_id_for(campus_customs_session)
+    history = recent_messages(user_id, MAX_HISTORY_MESSAGES) if user_id else []
+
+    try:
+        agent = build_agent()
+        result = await agent.run(request.message, message_history=history)
+        answer = result.output
+    except Exception as exc:  # noqa: BLE001 - surfaced as one clean line, logged in full
+        logger.exception("chat failed")
+        raise HTTPException(
+            status_code=503,
+            detail="The shop assistant is unavailable right now. Please try again.",
+        ) from exc
+
+    # Resolve ids against the catalogue. Anything the model made up is dropped rather
+    # than shown, and the drop is logged so a prompt problem is visible.
+    cards: list[dict] = []
+    for product_id in answer.product_ids:
+        found = get_product(product_id)
+        if found is None:
+            logger.warning("agent returned unknown product_id %r", product_id)
+            continue
+        cards.append({k: v for k, v in asdict(found).items() if k != "search_tags"})
+
+    saved = False
+    if user_id:
+        save_exchange(user_id, request.message, answer.reply, cards)
+        saved = True
+
+    return ChatReply(reply=answer.reply, products=cards, saved=saved)
