@@ -1,5 +1,5 @@
 {
-  "_comment": "Written from the HW4 scenario before coding, per AGENTS.md. Provisional: filenames are our choice (the assignment names none until the final problem shows the file tree). Update as each problem names new scripts, prompts, and outputs, then run: python3 check_submission.py hw4",
+  "_comment": "Written from the HW4 scenario before coding, per AGENTS.md, and updated as each problem names new files. backend/agent.py and prompts/chat_agent.md are the Problem 5 agent and do not exist yet; their FAILs are the to-do list. Check with: python3 check_submission.py hw4",
   "scripts": {
     "backend/agent.py": "prompts/chat_agent.md"
   },
@@ -7,7 +7,20 @@
     "backend/main.py",
     "backend/db.py",
     "frontend/package.json",
+    "frontend/vite.config.ts",
+    "frontend/index.html",
     "frontend/src/App.tsx",
+    "frontend/src/api.ts",
+    "frontend/src/types.ts",
+    "frontend/src/components/NavBar.tsx",
+    "frontend/src/components/ProductCard.tsx",
+    "frontend/src/components/ChatPanel.tsx",
+    "frontend/src/pages/Home.tsx",
+    "frontend/src/pages/Products.tsx",
+    "frontend/src/pages/ProductDetail.tsx",
+    "frontend/src/pages/About.tsx",
+    "frontend/src/pages/LogIn.tsx",
+    "frontend/src/pages/CreateAccount.tsx",
     "prompts/chat_agent.md",
     "requirements.txt",
     ".env.example",

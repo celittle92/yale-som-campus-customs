@@ -26,6 +26,7 @@ get price and stock answers that come from the supplied database rather than fro
 ## Contents
 
 - [Problem 2: The database](#problem-2-the-database)
+- [Problem 3: The website](#problem-3-the-website)
 
 ---
 
@@ -232,3 +233,108 @@ The seven-category mapping in finding 1 is approved in principle. It lands with 
 problem that needs category filtering, as a read-time lookup in code: the raw `garment_type`
 stays in the database untouched and still displays on the product page, while the canonical
 label drives filtering and browse-by-category.
+
+---
+
+## Problem 3: The website
+
+**Built:** a React + Vite + TypeScript storefront and the FastAPI backend that feeds it.
+No model calls anywhere in this problem, so no Portkey credits were spent.
+
+### Shape of it
+
+```text
+backend/
+  main.py     FastAPI routes
+  db.py       read-only SQLite access
+frontend/src/
+  App.tsx            routing, layout, footer
+  api.ts             every call to the backend, and price formatting
+  types.ts           the shapes the API returns
+  components/        NavBar, ProductCard, ChatPanel
+  pages/             Home, Products, ProductDetail, About, LogIn, CreateAccount
+```
+
+### The API
+
+| Route | Returns |
+|---|---|
+| `GET /api/health` | Status plus the product count, which also proves the database is reachable |
+| `GET /api/products` | All 102 products for the grid |
+| `GET /api/products/{id}` | One product with search tags and stock for all six sizes |
+| `GET /api/products/{id}/image` | The product photo as JPEG |
+| `POST /api/chat` | Stub until Problem 5, answering in the shape the agent will use |
+
+Three decisions worth recording:
+
+1. **Images are served by product id, not by path.** `catalogue.image_file_path` is data,
+   and a route that takes a filename is a path-traversal invitation. `db.image_path()`
+   looks the row up, resolves the path, and refuses anything that does not land inside the
+   image folder. Verified: a product id of `../../etc/passwd` returns `None`, and the route
+   answers 404.
+2. **The database is opened read-only** (`file:...?mode=ro`). Nothing in this project can
+   write to the supplied data, by construction rather than by discipline.
+3. **The chat stub returns the real response shape** — a reply plus a product list — so
+   Problem 5 replaces the implementation without the front end changing.
+
+### The front end
+
+- **Vite proxies `/api` to the backend**, so the browser sees one origin. No CORS dance, no
+  backend URL in the bundle, and — the point that matters — no path by which a Portkey key
+  could end up in client code.
+- **Prices format with two decimals** via `formatPrice`, per the Problem 2 decision.
+- **Size order is XS, S, M, L, XL, XXL**, fixed in `db.SIZE_ORDER`. Sorting alphabetically
+  would have read L, M, S, XL, XS, XXL.
+- **Out-of-stock sizes are struck through and labelled "out"** rather than hidden, so a
+  shopper learns their size is gone on the page instead of at checkout.
+- **Products with no recorded colours say so.** The three products from finding 4 render
+  "We do not have colours recorded for this item" rather than inferring a colour.
+- **The chat panel tells signed-out visitors their chat is not saved**, which is decision
+  D2 surfaced in the interface rather than left as a silent backend behaviour.
+- **Accounts are deliberately inert.** The Log In and Create Account forms are laid out and
+  labelled but disabled, and say so. Nothing typed into them is stored or sent, because
+  authentication has not been built yet.
+
+### Voice and research
+
+`yalebulldogblue.com` was read once for what the business is, what it sells, and how its
+navigation is organised. **No sentence, heading, or asset was copied.** The page copy here
+is written in Christine's voice — direct, informational, conversational, and aimed at what
+the reader is trying to do.
+
+The copy is also grounded in our own catalogue rather than invented: 102 styles, XS–XXL,
+$32–$98, and the residential colleges, varsity teams and graduate schools that actually
+appear in `search_tags`. One fact came from the research and nothing else did: the store
+address, 57 Broadway, New Haven.
+
+### Look
+
+The workspace's warm editorial theme — cream ground, deep ink type, one restrained accent —
+with the accent set to **navy** rather than the default plum, since the catalogue is Yale
+apparel. It is one token (`--color-accent` in `src/index.css`) if that should change.
+
+### Verification
+
+All offline. Nothing here spends credits.
+
+| Check | Result |
+|---|---|
+| `tsc -b && vite build` | Clean. 34 modules, 281 kB JS, 18.6 kB CSS |
+| Backend imports and reads | 102 products, inventory in catalogue size order |
+| Path traversal guard | `image_path('../../etc/passwd')` → `None`; route 404s |
+| `/api/health` | `{"status": "ok", "products": 102}` |
+| Products page | 102 cards rendered, 102 images loaded, **0 broken** |
+| Product detail | `$32.00` two-decimal price, image 900×900, sizes in catalogue order |
+| Empty-colours path | Benjamin Franklin T Shirt shows the "not recorded" message |
+| Out-of-stock path | Champion Reverse Weave Crewneck: 4 sizes struck through, "In stock in 2 of 6 sizes" |
+| Missing product | 404 |
+| Empty chat message | 422 from Pydantic validation |
+| Chat stub round trip | Message sent, stub reply rendered in the panel |
+| Browser console | No errors except the two deliberate negative tests above |
+| Mobile, 375×812 | No horizontal overflow, grid collapses to one column, chat panel fits |
+
+### Still open after this problem
+
+- Accounts do nothing yet; the forms are disabled placeholders.
+- The chat route is a stub. Problem 5 replaces it with the PydanticAI agent.
+- Category filtering (D3) is not built, so the Products page lists all 102 unfiltered.

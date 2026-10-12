@@ -228,6 +228,46 @@ Awaiting Christine's review of the rest of the harness.
 
 ---
 
+## Problem 3: Build the Campus Customs website
+
+### Prompt
+
+> Problem 3: Build the Campus Customs website
+>
+> Time to scaffold a react + vite + TypeScript front end for Campus Customs. There should be a nav bar at the top of the site that links to the main pages we'll have:
+> -home
+> -products
+> -about us
+> -log in
+> -create account
+>
+> The Campus Customs-style wording can be pulled from yalebulldogblue.com for the Home page and About Us page. HOWEVER, write these pages in a voice more like mine - direct, informational, yet conversational and with a user-focused lens. We should NOT copy the original site text.
+>
+> On the products page, we should create a product card including images from the catalogue -- use the image paths that were included in the database, along with the basic product information including name, price, and a short description.
+>
+> Each product should open a single-item page with a large image on the side (left side), the full product text on the other including description, price, sizes/stock whenever available. Clicking on the product card on the Products page should take the shopper to the primary single-item page for the product.
+>
+> There should be a chat interface on the bottom right of the website -- a floating chat panel is OK. We do NOT YET need to code it to talk to an agent, but a stub that calls the backend later is enough for right now.
+>
+> However, we will need to include an API to read the database. Start a simple FastAPI app in backend/main.py to serve products and images. We will grow it into the agent backend once we get to problem 5.
+
+Built the backend ([`backend/main.py`](backend/main.py), [`backend/db.py`](backend/db.py))
+and the storefront ([`frontend/`](frontend/)), plus [`README.md`](README.md). Full
+engineering detail and the verification table are in
+[`output/harness.md`](output/harness.md#problem-3-the-website).
+
+Evidence: 102 product cards render with 102 images and none broken; a product detail page
+shows a two-decimal price, colours, and per-size stock with out-of-stock sizes struck
+through; the floating chat panel sends a message and renders the stub reply. The front end
+type-checks and builds clean, and there is no horizontal overflow at 375px. No model calls
+anywhere in this problem, so no Portkey credits were spent.
+
+`yalebulldogblue.com` was read once for what the business is and how it is organised. No
+sentence or asset was copied; the page copy is written fresh and grounded in our own
+catalogue counts and tags. The store address is the only fact taken from the research.
+
+---
+
 <!--
 Template for the next problem. Copy below this line and replace N and the bracketed text.
 

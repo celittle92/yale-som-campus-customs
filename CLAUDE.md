@@ -59,4 +59,15 @@ import below resolves only inside that workspace, not in a standalone clone of t
   tracked, then from the Terminal panel in `hw4/`:
   `../.tools/gh/bin/gh repo create yale-som-campus-customs --public --source=. --remote=origin --push`
   The submitted Canvas URL is that repo's URL.
-- Run commands and smoke checks go here as each piece is built. Nothing in `hw4/` runs yet.
+- **Ports: the API is on 8010 and the site on 5174**, not the usual 8000/5173, because both
+  defaults were already taken on this machine by other projects. Don't kill those; the
+  numbers live in `frontend/vite.config.ts`, the CORS list in `backend/main.py`, and the
+  workspace `.claude/launch.json`.
+- Run the API from `hw4/`: `.venv/bin/python -m uvicorn backend.main:app --reload --port 8010`.
+  Run the site from `hw4/frontend/`: `npm run dev` (use the workspace Node, see above).
+  Vite proxies `/api` to the backend, so only the site gets opened in a browser.
+- Front-end build and type check, from `hw4/frontend/`: `npm run build`.
+- Sandboxed Bash cannot reach these local ports with `curl` (connection refused), and the
+  preview tools can. Verify the API through the browser rather than the shell.
+- `catalogue.image_file_path` is data, so images are served by product id and the resolved
+  path is checked against the image folder. Keep it that way.
