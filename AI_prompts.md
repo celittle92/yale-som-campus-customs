@@ -161,6 +161,73 @@ each one loads, and the exact output filenames), `hw4/CLAUDE.md`, and a
 
 ---
 
+## Problem 2: Analyze the database
+
+### Prompt
+
+> Problem 2: Analyze the database
+>
+> Look at the database in data hw4 -- campus_customs.db -- understand the fields of each table. But ABSOLUTELY ensure you understand catalogue, inventory, and users.
+>
+> Once that is complete, start the file output/harness.md -- each table and its fields should be recorded, as well as a short line on why each field matters for the shop and/or chatbot.  Send me what you come up with and I'll review and either approve or revise.
+>
+> Note this harness file will need to continue to grow in later HW problems (models, tools, safety, and specs).
+
+Inspected all five tables read-only with Python's `sqlite3` — schema, types, nullability,
+indexes, foreign keys, value ranges, and distinct values. No model calls, so no Portkey
+credits, and nothing was written to the database. Wrote
+[`output/harness.md`](output/harness.md): a field-by-field table for `catalogue`,
+`inventory`, `users`, and `chat_messages` with a line on why each field matters, how the
+tables join, eight findings that change the design, and three open questions.
+
+### Follow-up prompts
+
+1. **What was lacking:** the harness reported that `garment_type` was too messy to filter on
+   and that prices were whole dollars, but neither finding said what to do about it.
+
+   > Hm, for garment_type would there be a way for us to standardize them? maybe not now but down the line? because a website like that would drive me nuts.
+   >
+   > For the price is it because the database has no cents included? Because if cents ARE included the future website and chatbot should absolutely include the full price.
+
+   Both answered in [`output/harness.md`](output/harness.md). Built and verified a keyword
+   rule that collapses the 22 `garment_type` spellings into seven canonical categories with
+   102 of 102 products mapped and nothing left over; recorded the mapping table and the
+   decision to apply it as a read-time lookup, leaving the database untouched, when a
+   problem first needs category filtering. Confirmed against the data that 0 of 102 products
+   have non-zero cents, so the whole-dollar prices reflect the data and not a display
+   choice; recorded the decision to read `price` as stored and format it with two decimals
+   at the display boundary, so full prices appear automatically if cents ever arrive. Also
+   corrected a loose claim in the first draft: price does not follow from category — hoodies
+   run $45–$88 — so a price must always be read per product.
+
+2. **What was lacking:** the harness ended with two open questions — what to do about the
+   unusable seeded logins, and whether chat history should persist — and neither could be
+   decided without Christine.
+
+   > Let's handle these open questions for me first:
+   >
+   > * The seeded logins are unusable (finding 5). [...] My recommendation is the first — it needs no guessing, and new accounts get the stronger algorithm your semester rules call for.
+   >
+   > Do the thing you recommend.
+   >
+   > * Chat memory. `chat_messages` already stores history per user. Reuse it as the agent's memory, or keep memory in-process for the session only?
+   >
+   > If the user is logged in lets keep the chat memory. That could make life easier for users. Do not do it by cookies or IP tho if the user is not logged in, bc that could be sus and users don't like that.
+
+   Recorded both as decisions D1 and D2 in [`output/harness.md`](output/harness.md), and
+   carried the parts that must hold across sessions into
+   `.claude/rules/hw4-campus-customs.md`. D1: seeded accounts stay untouched as historical
+   data, new signups use Argon2id, and a legacy hash must fail as a generic "invalid email
+   or password" rather than a 500 or an enumeration hint. D2: history persists for signed-in
+   users and is never written for signed-out ones — no cookie, no IP, no fingerprint — with
+   the bound on replayed history noted as a recurring token cost. Found while writing it up
+   that `chat_messages.user_id` is NOT NULL with a foreign key to `users`, so the supplied
+   schema already makes anonymous persistence impossible; no extra guard is needed.
+
+Awaiting Christine's review of the rest of the harness.
+
+---
+
 <!--
 Template for the next problem. Copy below this line and replace N and the bracketed text.
 
