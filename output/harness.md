@@ -784,12 +784,48 @@ and 0 cards respectively. That matches the seeded contract exactly.
 assistant's line breaks collapsed and a six-item list read as one run-on sentence.
 `whitespace-pre-line` fixes it.
 
-**Observation for Problem 6:** on list questions the agent repeats the product names in
-prose *and* returns cards, which is redundant now that the cards render. Worth tightening
-in the instructions when safety and tools are expanded.
+### 5.1 Stopping the agent from narrating the cards
 
-**Cost:** four billed exchanges (three questions plus one re-test), each 2–3 model calls.
-The two content-filtered attempts cost nothing.
+The live run exposed a redundancy: on list questions the agent named every product in
+prose *and* returned the cards, so the shopper read the same six names twice.
+
+Fixed in the instructions, not in code. Two changes to
+[`../backend/prompts/prompt.md`](../backend/prompts/prompt.md):
+
+- the voice rule now forbids bulleted or numbered product lists outright, where it had
+  previously allowed them for three or more items;
+- the "Returning products" section now states that the website renders each id as a card
+  with photo, name and price directly under the reply, and tells the agent to use its
+  words for what a card cannot say — totals, what the set has in common, what
+  distinguishes the items, and what to ask next. It carries a worked good and bad example,
+  and an exception for naming a single product, which reads naturally.
+
+**Verified live, same question as before, fresh session.**
+
+Before:
+
+> We have 27 hoodies. The first six are:
+> - Basic Hoodie Big Yale — $68.00
+> - Brooks Brothers Double Knit Full Zip Hoodie Yale — $88.00
+> - Champion Full Zip Hood — $88.00 …
+
+After:
+
+> We have 27 hoodies. Most are navy or gray pullovers at $68.00; the full-zips are $88.00.
+> These six include both styles, with options from Champion, Brooks Brothers, and
+> District. Want me to narrow them by size, fit, or design?
+
+Measured: **zero** of the six card names appear in the reply, no bullets, 226 characters
+against roughly 370, and the same six cards still returned. The prose now carries the
+price pattern, the brands in the set and a follow-up question — none of which a card
+shows.
+
+This also confirms the instructions really are re-read per run: the file changed and the
+next request used it, with no server restart.
+
+**Cost:** five billed exchanges in total — three for the original questions, one to
+re-test the content-filter fix, one to verify this change — at 2–3 model calls each. The
+two content-filtered attempts cost nothing.
 - Sessions do not survive a backend restart, and there is no expiry or "log out everywhere".
 - There is no password reset and no email verification. Neither is asked for by the
   assignment; both would matter in production.

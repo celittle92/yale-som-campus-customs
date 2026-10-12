@@ -473,6 +473,22 @@ How the front end talks to FastAPI and how the agent is loaded are written up in
    Cost: four billed exchanges of 2–3 model calls each. The two content-filtered attempts
    cost nothing.
 
+2. **What was lacking:** the previous turn noted that the agent narrated the product cards
+   in prose as well as returning them, and left it for Problem 6.
+
+   > on list questions it repeats product names in prose and returns cards — redundant now that cards render.
+   >
+   > Fix it now
+
+   Fixed in the instructions rather than in code: bulleted and numbered product lists are
+   now forbidden outright, and the "Returning products" section explains that the website
+   renders each id as a card under the reply, so the agent should use its words for what a
+   card cannot say. Verified live with the same question in a fresh session — zero of the
+   six card names now appear in the reply, no bullets, 226 characters against roughly 370,
+   and the same six cards still returned. Detail in
+   [`output/harness.md`](output/harness.md#51-stopping-the-agent-from-narrating-the-cards).
+   Cost: one more billed exchange.
+
 ---
 
 <!--
