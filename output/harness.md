@@ -948,6 +948,56 @@ counting cards. The reply also still avoids narrating the card names, so the Pro
 fix is holding.
 
 **Cost:** two billed exchanges, bringing HW4 to seven.
+
+### 6.1 Cost: measuring it instead of guessing
+
+Christine asked what the API key had spent. The honest answer was that it could not be
+known from here — the Portkey dashboard holds the real figure, and without a per-token
+rate any dollar amount would have been invented. What could be measured was volume:
+
+| Item | Size | Paid |
+|---|---|---|
+| System instructions | 7,978 characters, roughly 2,000 tokens | On **every** model call |
+| Tool schemas, six tools | — | On every model call |
+| One `ProductDetails` result | 725 characters, roughly 180 tokens | Per lookup |
+| One `CategoryListing` result | 2,325 characters, roughly 580 tokens | Per lookup |
+
+A shopper question is normally two model calls — one to choose a tool, one to answer once
+the result returns — and the instructions and schemas ride along on both. So roughly 6–8k
+input tokens per exchange, and across all of HW4 on the order of 50–70k input tokens.
+
+**Her dashboard then showed $0.008 for the day**, which is consistent with that volume.
+
+**The chat route now logs real usage**, so this stops being an estimate:
+
+```text
+chat usage: requests=2 input=525 output=57 total=582
+```
+
+Those counts come from the model response via PydanticAI's `result.usage` — a property in
+2.x, not a method, which is worth remembering. Accounting is wrapped so a failure there can
+never break a reply.
+
+### 6.2 Model choice: stay on luna
+
+Christine's instruction, 2026-10-12: keep using `gpt-5.6-luna` wherever possible, because
+it is cheap and a full day of work cost about a cent on it.
+
+Already true, and now locked in. There is **no fallback model and no escalation path** in
+this codebase — nothing switches models on its own. The assignment's suggestion that "you
+may want a smarter model for harder agent steps" is deliberately not taken up: if answer
+quality needs work, the first moves are better instructions and better tools, both of which
+are free at runtime. Switching models is her decision.
+
+One related fix: `model_name()` resolved `OPENAI_MODEL` straight from the environment,
+which could disagree with what the agent actually used — a project `.env` is only visible
+after `load_dotenv` has run, so a health check made before the first chat would have
+reported the default while the agent used something else. It now goes through
+`load_settings()`, the same path the agent uses.
+
+**The biggest remaining cost lever** is the instructions file: ~2,000 tokens, paid twice
+per question. Trimming it is the highest-leverage saving available — though not the safety
+section, which is the part holding up under probing.
 - Sessions do not survive a backend restart, and there is no expiry or "log out everywhere".
 - There is no password reset and no email verification. Neither is asked for by the
   assignment; both would matter in production.

@@ -257,6 +257,22 @@ async def chat(
         agent = build_agent()
         result = await agent.run(request.message, message_history=history)
         answer = result.output
+        # Token usage per exchange, so spend is measurable rather than guessed at.
+        # One shopper question is several model calls: one to pick a tool, another to
+        # answer once the result comes back. The instructions and tool schemas are
+        # re-sent on each of those, which is where most of the input tokens go.
+        try:
+            # `usage` is a property in pydantic-ai 2.x, not a method.
+            usage = result.usage
+            logger.info(
+                "chat usage: requests=%s input=%s output=%s total=%s",
+                usage.requests,
+                usage.input_tokens,
+                usage.output_tokens,
+                usage.total_tokens,
+            )
+        except Exception:  # noqa: BLE001 - never let accounting break a reply
+            logger.debug("usage unavailable for this run")
     except ModelHTTPError as exc:
         # Azure's content filter rejects some messages before the model ever sees them,
         # jailbreak-shaped ones especially. That is a refusal, not an outage, so answer

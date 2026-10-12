@@ -17,7 +17,7 @@ from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIResponsesModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from app_config import build_portkey_client, load_settings
+from app_config import DEFAULT_OPENAI_MODEL, build_portkey_client, load_settings
 from models import ChatAnswer
 from tools import (
     browse_category,
@@ -30,6 +30,11 @@ from tools import (
 
 HERE = Path(__file__).resolve().parent
 PROMPT_PATH = HERE / "prompts" / "prompt.md"
+
+# Christine's standing instruction (2026-10-12): stay on gpt-5.6-luna. It is the cheap
+# model and a full day of building HW4 cost about $0.008 on it. There is deliberately no
+# fallback and no escalation path here — switching to a stronger model for "harder steps"
+# is a decision she makes, not something the code does on its own.
 
 # Everything replayed into the model is re-sent and re-paid on every turn, so the agent
 # sees a bounded slice of the conversation rather than its whole history.
@@ -88,5 +93,15 @@ def build_agent() -> Agent[None, ChatAnswer]:
 
 
 def model_name() -> str:
-    """What the chat route reports it is running on."""
-    return os.getenv("OPENAI_MODEL") or "gpt-5.6-luna"
+    """The model the agent will actually use.
+
+    Resolved through `load_settings()` rather than reading the environment directly, so
+    this cannot disagree with the agent — a project `.env` is only visible after
+    `load_dotenv` has run, and reading `os.environ` before then would report the default
+    while the agent used something else.
+    """
+    try:
+        return load_settings().model_name
+    except RuntimeError:
+        # No key configured; report the default rather than failing a health check.
+        return os.getenv("OPENAI_MODEL") or DEFAULT_OPENAI_MODEL

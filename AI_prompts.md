@@ -529,6 +529,34 @@ the agent quoted the Crew Left Chest Hoodie at $68.00, described it correctly, a
 row for row. Asked what is under $40 it answered "25 items", which is exactly the count in
 the catalogue. Cost: two billed exchanges.
 
+### Follow-up prompts
+
+1. **What was lacking:** nothing recorded what the live runs actually cost, so spend was
+   guesswork.
+
+   > do you have an idea how much $$ my apikey has spent
+
+   Could not be answered in dollars from here — the Portkey dashboard holds the real
+   figure, and inventing one without a per-token rate would have been a fabrication. What
+   was measurable was volume: the instructions are ~2,000 tokens re-sent on every model
+   call, a product lookup adds ~180 and a category listing ~580, and a typical question is
+   two calls, so roughly 6–8k input tokens per exchange and 50–70k across HW4.
+
+   Added real usage logging to the chat route so this stops being an estimate.
+
+2. **What was lacking:** the model choice was a default rather than a recorded decision,
+   and the assignment invites escalating to a stronger model.
+
+   > allegedly i've only used $.008 today....let's make sure we keep using the luna model to keep the costs low whenever possible.
+
+   Already on `gpt-5.6-luna` with no fallback and no escalation path, so this was about
+   locking it in: recorded in [`backend/agent.py`](backend/agent.py), in
+   `.claude/rules/hw4-campus-customs.md`, and in the harness. If answer quality needs work
+   the first moves are better instructions and better tools, which cost nothing at runtime;
+   switching models is Christine's call. Also fixed a drift risk where `model_name()` read
+   `OPENAI_MODEL` from the environment directly and could report a different model than the
+   agent actually used.
+
 ---
 
 <!--
