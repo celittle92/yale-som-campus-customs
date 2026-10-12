@@ -4,16 +4,18 @@ This file is the running record for Homework 4. It has one section per homework 
 and each section includes:
 
 - the problem number and title;
-- the prompt Christine typed, in her own words, recorded verbatim;
-- any follow-up prompts, each paired with what still needed resolution after the
-  previous prompt; and
-- evidence that the work was completed: links to the code and JSON outputs in the `hw4`
-  folder.
+- at least one prompt Christine typed, in her own words, recorded verbatim; and
+- if the first prompt was not enough, the follow-up prompts, each with a sentence on what
+  was lacking after the previous one.
+
+The running site, the database writes, and screenshots are the additional evidence that the
+work was done. Per the professor, no extra proof essay is needed beyond these prompts, so
+the notes under each prompt stay short and say only what was built.
 
 The file is updated throughout the assignment. Prompts are recorded verbatim and are not
 rewritten later to match the final code.
 
-## Problem 1: Project setup
+## Problem 1: Vibe Coder Prompts
 
 ### Prompt
 
@@ -103,13 +105,59 @@ each one loads, and the exact output filenames), `hw4/CLAUDE.md`, and a
    round-trip. No API calls, so no Portkey credits spent. Versions recorded in
    [`CLAUDE.md`](CLAUDE.md).
 
-<!--
-4. **What needed resolution:** [what was still open after the previous prompt].
+4. **What needed resolution:** the assignment requires submitting a **public** repo URL, but
+   the surrounding AI Foundations workspace is a private repo. The project needed its own
+   repo, and a decision about when it becomes public.
 
-   > [verbatim prompt]
+   > let's do the nested clone for the public repo
 
-   [What was done in response, with links to the code and outputs that are the evidence.]
--->
+   Christine chose the name `yale-som-campus-customs` (matching the existing
+   `yale-som-evans-hall`) and chose to keep the repo local for now, creating it on GitHub at
+   submission time rather than working in public.
+
+   Made `hw4/` its own git repo on branch `main` and gitignored `hw4/` and `data hw4/` in the
+   workspace repo, following the `Lecture 4 In Class/yale_som_virtual/` pattern. First commit
+   `e253e7a` holds 9 files; `.venv`, `.env`, the database, and the product images are all
+   excluded. Removed the absolute home paths from [`CLAUDE.md`](CLAUDE.md) so nothing in the
+   eventual public repo carries them, and recorded there the exact `gh repo create` command
+   for submission day.
+
+5. **What was lacking:** this log existed but had been built from the house convention
+   rather than from Problem 1's stated requirements.
+
+   > Problem 1: Vibe Coder Prompts
+   >
+   > If we have not already, create AI_Prompts.md to keep it updated as we work together. This will keep a log of what I typed to you as we work.
+   >
+   > Keep one section for each problem. The sections must include:
+   > -problem number and title
+   > -at least one prompt typed, (use my words here)
+   > -IF needed - follow up prompt(s) and a sentence on what was lacking after the initial prompt
+   >
+   > The running site, database writes, and screenshots are additional evidence - prof says I "do not need an extra proof essay beyond these prompts"
+
+   Retitled this section to "Vibe Coder Prompts" and restated the required section format
+   above in the words of the assignment: problem number and title, at least one prompt in
+   Christine's own words, and follow-ups only where the first prompt left something lacking.
+   Recorded that the running site, database writes, and screenshots are the evidence, so
+   these notes stay short rather than becoming a proof essay.
+
+   This file already existed, created during setup (Problem 1's first prompt, above), so
+   Problem 1 was a matter of bringing it in line with the stated format rather than starting
+   it.
+
+6. **What was lacking:** the prompt above wrote the filename as `AI_Prompts.md`, so it was
+   renamed to match. That spelling was a typo rather than the assignment's.
+
+   > wait - the assignment has AI_prompts.md
+   >
+   > I just uppercased it by reflex. Keep the lowercase. but do the rest.
+
+   Renamed the file back to `AI_prompts.md`. Both renames went through `git mv` in two
+   steps, because macOS is case-insensitive and a direct rename silently does nothing. The
+   tracked filename is unchanged from the first commit, and every reference to it elsewhere
+   still resolves. The prompt in follow-up 5 is left exactly as typed, per the rule that
+   prompts are never rewritten to match later decisions.
 
 ---
 
@@ -126,7 +174,7 @@ Template for the next problem. Copy below this line and replace N and the bracke
 
 ### Follow-up prompts
 
-1. **What needed resolution:** [what was still open].
+1. **What was lacking:** [what the initial prompt did not settle].
 
    > [verbatim]
 

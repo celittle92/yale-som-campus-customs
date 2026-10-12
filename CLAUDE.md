@@ -53,4 +53,10 @@ import below resolves only inside that workspace, not in a standalone clone of t
   the sandbox cannot read gh credentials. Run `git commit`, `git push`, and `gh` from the
   Terminal panel. `gh` lives at `../.tools/gh/bin/gh`. Read-only git (status, diff, log)
   works in Bash. Ask before every push.
+- **There is no remote yet, by Christine's choice.** Local commits only until submission;
+  the GitHub repo gets created at the end, as `celittle92/yale-som-campus-customs`. Before
+  that first push: confirm with `git ls-files` that no key, database, or product image is
+  tracked, then from the Terminal panel in `hw4/`:
+  `../.tools/gh/bin/gh repo create yale-som-campus-customs --public --source=. --remote=origin --push`
+  The submitted Canvas URL is that repo's URL.
 - Run commands and smoke checks go here as each piece is built. Nothing in `hw4/` runs yet.

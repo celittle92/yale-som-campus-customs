@@ -1,9 +1,11 @@
 # HW4 Harness
 
-This file documents how each HW4 problem was built: the design decisions, the steps taken,
-and the checks that show the result is trustworthy. It grows by one section per problem.
-The verbatim prompt history lives in [`../AI_prompts.md`](../AI_prompts.md); this file
-explains the engineering behind it.
+This file is our own engineering record: the design decisions behind each problem and the
+checks that show the result is trustworthy. It is **not** a required deliverable — the
+assignment's evidence is the prompt log, the running site, the database writes, and
+screenshots, and the professor said no extra proof essay is needed beyond the prompts. Keep
+this file short and useful; the verbatim prompt history lives in
+[`../AI_prompts.md`](../AI_prompts.md).
 
 **Project:** a Campus Customs customer website with a helpful chatbot. Shoppers browse
 products, create an account, chat about merch, see matching items appear on the page, and
