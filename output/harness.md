@@ -333,8 +333,48 @@ All offline. Nothing here spends credits.
 | Browser console | No errors except the two deliberate negative tests above |
 | Mobile, 375×812 | No horizontal overflow, grid collapses to one column, chat panel fits |
 
+### 3.1 Selecting colours and sizes
+
+Christine asked why neither colours nor sizes could be selected on a product page. The two
+turned out to have opposite answers.
+
+**Colours are not options, and offering them would be a lie.** `colors` lists the colours
+*present in the garment's design*, not colourways you can order. The Boola Boola T Shirt is
+a navy shirt with white-and-gray lettering, so its array is `["navy", "white", "gray"]`.
+The Branford quarter-zip is heather gray with a multicolour crest, so it carries green and
+yellow. Two independent confirmations: `inventory` is keyed by `(product_id, size)` with
+**no colour column**, and there is exactly one image per product. A colour picker would
+have implied the Branford comes in green.
+
+The real defect was presentational — colours were rendered as pill badges that looked
+exactly like selectable chips, which is what invited the click. They now read as a
+sentence under the heading "Colours in this design", ending with "This item comes in the
+one colourway shown."
+
+**Sizes are a real variant, so they are now selectable.** They had been `<li>` elements,
+which gave a text cursor on hover and a native `title` tooltip — Christine caught both.
+They are now real `<button>` elements:
+
+- in-stock sizes get a pointer cursor, a hover state, `aria-pressed`, and keyboard focus;
+- out-of-stock sizes stay visible but `disabled`, struck through, with a not-allowed cursor;
+- clicking a selected size again clears it;
+- the native `title` tooltip is gone, replaced by an `aria-label` carrying the stock count.
+
+Selecting a size reveals its exact stock and a button that opens the chat panel with the
+question already written — "Is the Big Yale Tri Blend T Shirt still available in size M?".
+That handoff runs through `ChatContext`, so the product page never reaches into the panel's
+internals. **Decision:** no cart. The assignment does not ask for checkout, and a size
+control that leads to a bag we cannot fill would be the same kind of lie as the colour
+picker. Handing the question to the assistant is the honest use of a selected size.
+
+Verified in the browser: all six size controls are `BUTTON`; cursors are `pointer` when in
+stock and `not-allowed` when not; no `title` attributes remain; selecting M shows
+"Size M — 15 in stock"; the ask button opens the panel, pre-fills the question and focuses
+the input; clicking M again sets `aria-pressed` back to false. Clean `tsc -b && vite build`.
+
 ### Still open after this problem
 
 - Accounts do nothing yet; the forms are disabled placeholders.
-- The chat route is a stub. Problem 5 replaces it with the PydanticAI agent.
+- The chat route is a stub. Problem 5 replaces it with the PydanticAI agent, which will
+  receive the pre-filled size questions this page now sends.
 - Category filtering (D3) is not built, so the Products page lists all 102 unfiltered.

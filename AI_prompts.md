@@ -266,6 +266,34 @@ anywhere in this problem, so no Portkey credits were spent.
 sentence or asset was copied; the page copy is written fresh and grounded in our own
 catalogue counts and tags. The store address is the only fact taken from the research.
 
+### Follow-up prompts
+
+1. **What was lacking:** the product page displayed colours and sizes but let you do
+   nothing with either, and it gave no hint which of the two was even selectable.
+
+   > Great - use Navy cause it should look like Yale for sure. QQ - why on product pages can't I select the color and/or size if it is in stock?
+
+   Checked the data before answering. Colours turned out **not** to be orderable options:
+   the array lists colours present in the garment's design, so the Boola Boola tee is navy
+   with white-and-gray lettering, and `inventory` has no colour column. Offering a colour
+   picker would have implied the Branford quarter-zip comes in green. The real fault was
+   that colours were rendered as pill badges that looked selectable; they now read as a
+   sentence under "Colours in this design".
+
+   Sizes are a genuine variant, so Christine chose to make them selectable and hand the
+   selection to the chat assistant rather than build a cart. Full detail in
+   [`output/harness.md`](output/harness.md#31-selecting-colours-and-sizes).
+
+2. **What was lacking:** the size controls behaved like text, not like controls.
+
+   > yeah my cursor goes to a text highlight when I hover over a size:
+
+   (Sent with a screenshot showing the text cursor and a native tooltip over size XXL.)
+   The sizes had been `<li>` elements with a `title` attribute. They are now real
+   `<button>` elements: pointer cursor and hover state when in stock, disabled and
+   not-allowed when out, `aria-pressed` for the selected one, and the native tooltip
+   replaced by an `aria-label` carrying the stock count.
+
 ---
 
 <!--

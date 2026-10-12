@@ -1,18 +1,22 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { fetchProduct, formatPrice } from '../api'
+import { useChat } from '../ChatContext'
 import type { ProductDetail as Detail } from '../types'
 
 export default function ProductDetail() {
   const { productId } = useParams<{ productId: string }>()
   const [product, setProduct] = useState<Detail | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [selectedSize, setSelectedSize] = useState<string | null>(null)
+  const { openWith } = useChat()
 
   useEffect(() => {
     if (!productId) return
     let active = true
     setProduct(null)
     setError(null)
+    setSelectedSize(null)
     fetchProduct(productId)
       .then((data) => active && setProduct(data))
       .catch((caught: Error) => active && setError(caught.message))
@@ -39,6 +43,7 @@ export default function ProductDetail() {
   }
 
   const available = product.sizes.filter((size) => size.in_stock)
+  const selected = product.sizes.find((size) => size.size === selectedSize) ?? null
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-10">
@@ -68,21 +73,18 @@ export default function ProductDetail() {
 
           <p className="mt-5 leading-relaxed text-body">{product.description}</p>
 
+          {/* Colours describe the one garment pictured — `inventory` has no colour
+              dimension and there is a single image per product. Rendering these as
+              chips made them look selectable, so they read as a sentence instead. */}
           <section className="mt-8" aria-labelledby="colors-heading">
             <h2 id="colors-heading" className="text-sm font-semibold text-ink">
-              Colours
+              Colours in this design
             </h2>
             {product.colors.length > 0 ? (
-              <ul className="mt-2 flex flex-wrap gap-2">
-                {product.colors.map((color) => (
-                  <li
-                    key={color}
-                    className="rounded-full border border-line bg-paper px-3 py-1 text-sm text-body capitalize"
-                  >
-                    {color}
-                  </li>
-                ))}
-              </ul>
+              <p className="mt-2 text-sm text-body">
+                <span className="capitalize">{product.colors.join(', ')}</span>. This item
+                comes in the one colourway shown.
+              </p>
             ) : (
               /* Three catalogue products have an empty colors array. Say so rather
                  than inferring a colour from the description or the photo. */
@@ -99,33 +101,72 @@ export default function ProductDetail() {
             </h2>
             {product.sizes.length > 0 ? (
               <>
-                <ul className="mt-3 flex flex-wrap gap-2">
-                  {product.sizes.map((size) => (
-                    <li
-                      key={size.size}
-                      className={
-                        size.in_stock
-                          ? 'rounded border border-line bg-paper px-4 py-2 text-sm font-medium text-ink'
-                          : 'rounded border border-line bg-cream px-4 py-2 text-sm text-muted line-through'
-                      }
-                      title={
-                        size.in_stock
-                          ? `${size.quantity} in stock`
-                          : 'Out of stock in this size'
-                      }
-                    >
-                      {size.size}
-                      <span className="ml-2 text-xs font-normal">
-                        {size.in_stock ? `${size.quantity} left` : 'out'}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                {/* Real buttons, not list items: an in-stock size is something you can
+                    pick, so it gets a pointer cursor, a pressed state and keyboard
+                    focus. Out-of-stock sizes stay visible but disabled. */}
+                <div
+                  role="group"
+                  aria-label="Choose a size"
+                  className="mt-3 flex flex-wrap gap-2"
+                >
+                  {product.sizes.map((size) => {
+                    const isSelected = selectedSize === size.size
+                    return (
+                      <button
+                        key={size.size}
+                        type="button"
+                        disabled={!size.in_stock}
+                        aria-pressed={isSelected}
+                        aria-label={
+                          size.in_stock
+                            ? `Size ${size.size}, ${size.quantity} in stock`
+                            : `Size ${size.size}, out of stock`
+                        }
+                        onClick={() =>
+                          setSelectedSize(isSelected ? null : size.size)
+                        }
+                        className={
+                          !size.in_stock
+                            ? 'cursor-not-allowed rounded border border-line bg-cream px-4 py-2 text-sm text-muted line-through'
+                            : isSelected
+                              ? 'cursor-pointer rounded border-2 border-accent bg-accent-soft px-4 py-2 text-sm font-semibold text-accent'
+                              : 'cursor-pointer rounded border border-line bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-accent hover:bg-accent-soft'
+                        }
+                      >
+                        {size.size}
+                        <span className="ml-2 text-xs font-normal">
+                          {size.in_stock ? `${size.quantity} left` : 'out'}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+
                 <p className="mt-3 text-sm text-body">
                   {available.length === 0
                     ? 'Out of stock in every size right now.'
                     : `In stock in ${available.length} of ${product.sizes.length} sizes.`}
                 </p>
+
+                {selected && (
+                  <div className="mt-4 rounded-lg border border-line bg-accent-soft p-4">
+                    <p className="text-sm text-ink">
+                      <span className="font-semibold">Size {selected.size}</span> —{' '}
+                      {selected.quantity} in stock.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openWith(
+                          `Is the ${product.name} still available in size ${selected.size}?`,
+                        )
+                      }
+                      className="mt-3 cursor-pointer rounded bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink"
+                    >
+                      Ask about size {selected.size}
+                    </button>
+                  </div>
+                )}
               </>
             ) : (
               <p className="mt-2 text-sm text-muted">

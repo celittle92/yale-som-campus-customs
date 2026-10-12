@@ -1,4 +1,5 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { ChatProvider } from './ChatContext'
 import ChatPanel from './components/ChatPanel'
 import NavBar from './components/NavBar'
 import About from './pages/About'
@@ -11,7 +12,8 @@ import Products from './pages/Products'
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="flex min-h-screen flex-col bg-cream">
+      <ChatProvider>
+        <div className="flex min-h-screen flex-col bg-cream">
         <NavBar />
         <main className="flex-1">
           <Routes>
@@ -37,8 +39,9 @@ export default function App() {
             Yale apparel
           </div>
         </footer>
-        <ChatPanel />
-      </div>
+          <ChatPanel />
+        </div>
+      </ChatProvider>
     </BrowserRouter>
   )
 }

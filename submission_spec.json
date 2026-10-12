@@ -12,6 +12,7 @@
     "frontend/src/App.tsx",
     "frontend/src/api.ts",
     "frontend/src/types.ts",
+    "frontend/src/ChatContext.tsx",
     "frontend/src/components/NavBar.tsx",
     "frontend/src/components/ProductCard.tsx",
     "frontend/src/components/ChatPanel.tsx",

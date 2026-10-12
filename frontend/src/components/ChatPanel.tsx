@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { sendChatMessage } from '../api'
+import { useChat } from '../ChatContext'
 import type { ProductSummary } from '../types'
 
 type Message = {
@@ -15,16 +16,26 @@ const GREETING: Message = {
 }
 
 export default function ChatPanel() {
-  const [open, setOpen] = useState(false)
+  const { open, prefill, openPanel, closePanel, consumePrefill } = useChat()
   const [messages, setMessages] = useState<Message[]>([GREETING])
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, open])
+
+  // A product page can open the panel with the question already written. Take it once,
+  // then clear it so reopening the panel later does not resurrect an old question.
+  useEffect(() => {
+    if (!prefill) return
+    setDraft(prefill)
+    consumePrefill()
+    inputRef.current?.focus()
+  }, [prefill, consumePrefill])
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -52,8 +63,8 @@ export default function ChatPanel() {
     return (
       <button
         type="button"
-        onClick={() => setOpen(true)}
-        className="fixed right-5 bottom-5 z-50 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-ink"
+        onClick={openPanel}
+        className="fixed right-5 bottom-5 z-50 cursor-pointer rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-ink"
       >
         Ask us anything
       </button>
@@ -69,9 +80,9 @@ export default function ChatPanel() {
         <h2 className="text-sm font-semibold text-white">Shop assistant</h2>
         <button
           type="button"
-          onClick={() => setOpen(false)}
+          onClick={closePanel}
           aria-label="Close the shop assistant"
-          className="rounded px-2 text-xl leading-none text-white/80 hover:text-white"
+          className="cursor-pointer rounded px-2 text-xl leading-none text-white/80 hover:text-white"
         >
           &times;
         </button>
@@ -119,6 +130,7 @@ export default function ChatPanel() {
         </label>
         <input
           id="chat-input"
+          ref={inputRef}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder="Do you have hoodies in XL?"
@@ -128,7 +140,7 @@ export default function ChatPanel() {
         <button
           type="submit"
           disabled={sending || !draft.trim()}
-          className="rounded bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink disabled:cursor-not-allowed disabled:opacity-50"
+          className="cursor-pointer rounded bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink disabled:cursor-not-allowed disabled:opacity-50"
         >
           Send
         </button>
