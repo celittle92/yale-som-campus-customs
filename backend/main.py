@@ -14,6 +14,7 @@ from fastapi import Cookie, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic_ai.exceptions import ModelHTTPError
 
 import sessions
 from agent import MAX_HISTORY_MESSAGES, build_agent, model_name
@@ -256,6 +257,29 @@ async def chat(
         agent = build_agent()
         result = await agent.run(request.message, message_history=history)
         answer = result.output
+    except ModelHTTPError as exc:
+        # Azure's content filter rejects some messages before the model ever sees them,
+        # jailbreak-shaped ones especially. That is a refusal, not an outage, so answer
+        # like a refusal instead of showing the shopper a broken site. These cost no
+        # tokens, since nothing was generated.
+        if "content_filter" in str(exc.body or "").lower():
+            logger.info("provider content filter refused a message")
+            # Deliberately NOT saved to chat_messages. A filtered message would be
+            # replayed as context on every later turn, so storing it would re-trigger
+            # the filter and break the conversation from then on.
+            return ChatReply(
+                reply=(
+                    "I can't help with that one. I'm here for Campus Customs merchandise "
+                    "— ask me about a style, a size, or what we have in stock."
+                ),
+                products=[],
+                saved=False,
+            )
+        logger.exception("the model request failed")
+        raise HTTPException(
+            status_code=503,
+            detail="The shop assistant is unavailable right now. Please try again.",
+        ) from exc
     except Exception as exc:  # noqa: BLE001 - surfaced as one clean line, logged in full
         logger.exception("chat failed")
         raise HTTPException(

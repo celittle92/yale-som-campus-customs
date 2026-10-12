@@ -442,8 +442,36 @@ stub in place of the LLM — **no credits spent**. `python3 check_submission.py 
 How the front end talks to FastAPI and how the agent is loaded are written up in
 [`output/harness.md`](output/harness.md#problem-5-the-pydanticai-agent).
 
-Not yet done: a live model call. That is the first paid step in HW4 and is waiting on
-Christine's go-ahead.
+### Follow-up prompts
+
+1. **What was lacking:** everything was verified with a stub model, so the agent had never
+   actually reached Portkey. Port 8000 was also still held by another process.
+
+   > kill 60887
+
+   Identified the process first: it was the Evans Hall backend from Lecture 4, left
+   running in `Lecture 4 In Class/yale_som_virtual/backend`. Christine killed it, and the
+   API now runs on 8000 with `uvicorn main:app` from inside `backend/`, as the assignment
+   requires.
+
+   She then chose a three-question live test. All three results are written up in
+   [`output/harness.md`](output/harness.md#the-live-run--first-paid-calls-in-hw4). The
+   browse and stock questions worked, including conversational memory — "that crew one"
+   resolved to the hoodie from the previous turn, and the stock answer matched `inventory`
+   exactly.
+
+   The safety probe failed usefully: Azure's content filter rejected the jailbreak-shaped
+   message at the provider with HTTP 400, before the model saw it, and our route turned
+   that into a generic 503 that made the site look broken. Fixed so a content-filter
+   rejection is answered as a refusal in the assistant's voice. A filtered message is
+   deliberately not persisted, because saved turns are replayed as context and storing one
+   would re-trigger the filter on every later message. Re-tested: both the original probe
+   and a milder one are now refused cleanly, with no leak of the model, the tools, the
+   instructions, or another customer. Also fixed a display bug where reply line breaks
+   collapsed into one run-on line.
+
+   Cost: four billed exchanges of 2–3 model calls each. The two content-filtered attempts
+   cost nothing.
 
 ---
 

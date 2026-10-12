@@ -95,10 +95,12 @@ export default function ChatPanel() {
         {messages.map((message, index) => (
           <div key={index}>
             <div
+              // whitespace-pre-line keeps the assistant's line breaks, so a short list
+              // of products reads as a list rather than one run-on sentence.
               className={
                 message.role === 'user'
-                  ? 'ml-auto w-fit max-w-[85%] rounded-lg bg-accent px-3 py-2 text-sm text-white'
-                  : 'mr-auto w-fit max-w-[85%] rounded-lg bg-cream px-3 py-2 text-sm text-body'
+                  ? 'ml-auto w-fit max-w-[85%] rounded-lg bg-accent px-3 py-2 text-sm whitespace-pre-line text-white'
+                  : 'mr-auto w-fit max-w-[85%] rounded-lg bg-cream px-3 py-2 text-sm whitespace-pre-line text-body'
               }
             >
               {message.content}
