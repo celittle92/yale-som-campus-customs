@@ -7,37 +7,49 @@ const pages = [
   { to: '/about', label: 'About Us', end: false },
 ]
 
-const accountPages = [
-  { to: '/login', label: 'Log In' },
-  { to: '/create-account', label: 'Create Account' },
-]
-
 function linkClass({ isActive }: { isActive: boolean }): string {
-  const base = 'rounded px-3 py-2 text-sm transition-colors'
+  const base =
+    'relative rounded px-1 py-2 text-sm transition-colors after:absolute after:inset-x-1 after:-bottom-0.5 after:h-px after:origin-left after:scale-x-0 after:bg-accent after:transition-transform after:duration-300 hover:after:scale-x-100'
   return isActive
-    ? `${base} bg-accent-soft font-semibold text-accent`
-    : `${base} text-body hover:bg-accent-soft hover:text-accent`
+    ? `${base} font-semibold text-accent after:scale-x-100`
+    : `${base} text-body hover:text-ink`
+}
+
+/** A quiet monogram, so the wordmark has something to sit against. */
+function Monogram() {
+  return (
+    <span
+      aria-hidden="true"
+      className="grid h-9 w-9 flex-none place-items-center rounded-full bg-accent text-[13px] font-semibold tracking-tight text-white transition-transform duration-300 group-hover:scale-105"
+      style={{ fontFamily: 'var(--font-display)' }}
+    >
+      CC
+    </span>
+  )
 }
 
 export default function NavBar() {
   const { user, loading, logOut } = useAuth()
+
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-paper/95 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-line/70 bg-cream/85 backdrop-blur-md">
       <nav
         aria-label="Main"
-        className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4"
+        className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-8 gap-y-3 px-5 py-3.5"
       >
-        <NavLink
-          to="/"
-          className="font-display text-xl font-bold tracking-tight text-ink"
-        >
-          Campus Customs
-          <span className="ml-2 align-middle text-xs font-normal tracking-widest text-muted uppercase">
-            New Haven
+        <NavLink to="/" className="group flex items-center gap-3">
+          <Monogram />
+          <span className="leading-none">
+            <span className="block font-display text-xl font-semibold tracking-tight text-ink">
+              Campus Customs
+            </span>
+            <span className="mt-0.5 block text-[10px] font-medium tracking-[0.18em] text-muted uppercase">
+              New Haven
+            </span>
           </span>
         </NavLink>
 
-        <ul className="flex items-center gap-1">
+        <ul className="flex items-center gap-6">
           {pages.map((page) => (
             <li key={page.to}>
               <NavLink to={page.to} end={page.end} className={linkClass}>
@@ -47,13 +59,10 @@ export default function NavBar() {
           ))}
         </ul>
 
-        {/* Signed in: greet by first name and offer a way out. Signed out: the two
-            account links. Nothing renders until /api/auth/me settles, so the nav does
-            not flash "Log In" at someone who already is. */}
-        <ul className="ml-auto flex items-center gap-2">
+        <ul className="ml-auto flex items-center gap-3">
           {loading ? null : user ? (
             <>
-              <li className="text-sm text-body">
+              <li className="hidden text-sm text-body sm:block">
                 Hi,{' '}
                 <span className="font-semibold text-ink">
                   {user.first_name ?? user.name}
@@ -63,27 +72,31 @@ export default function NavBar() {
                 <button
                   type="button"
                   onClick={() => void logOut()}
-                  className="cursor-pointer rounded border border-line px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-accent-soft"
+                  className="cursor-pointer rounded-full border border-line px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-accent hover:bg-accent-soft"
                 >
                   Log out
                 </button>
               </li>
             </>
           ) : (
-            accountPages.map((page, index) => (
-              <li key={page.to}>
+            <>
+              <li>
                 <NavLink
-                  to={page.to}
-                  className={
-                    index === accountPages.length - 1
-                      ? 'rounded bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink'
-                      : linkClass
-                  }
+                  to="/login"
+                  className="rounded-full px-3 py-2 text-sm text-body transition-colors hover:text-ink"
                 >
-                  {page.label}
+                  Log In
                 </NavLink>
               </li>
-            ))
+              <li>
+                <NavLink
+                  to="/create-account"
+                  className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-300 hover:-translate-y-px hover:bg-accent-deep hover:shadow-card"
+                >
+                  Create Account
+                </NavLink>
+              </li>
+            </>
           )}
         </ul>
       </nav>

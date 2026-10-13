@@ -75,6 +75,7 @@ def _lookup(product) -> ProductLookup:
         price_usd=product.price,
         colors_in_design=product.colors,
         description=product.description,
+        has_written_description=product.has_written_description,
     )
 
 

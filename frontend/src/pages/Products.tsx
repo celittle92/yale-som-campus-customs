@@ -114,8 +114,13 @@ export default function Products() {
             </div>
           </div>
           <ul className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {results.products.map((product) => (
-              <ProductCard key={product.product_id} product={product} />
+            {results.products.map((product, i) => (
+              <ProductCard
+                key={product.product_id}
+                product={product}
+                stock={stock[product.product_id]}
+                index={i}
+              />
             ))}
           </ul>
         </section>
@@ -148,7 +153,26 @@ export default function Products() {
         </p>
       )}
 
-      {!products && !error && <p className="mt-8 text-muted">Loading the catalogue…</p>}
+      {/* Skeletons rather than a line of text: loading reads as "coming", and the
+          page does not jump when the real cards arrive. */}
+      {!products && !error && (
+        <>
+          <div className="skeleton mt-8 h-32 rounded-lg" />
+          <ul className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <li key={i} className="overflow-hidden rounded-xl border border-line bg-paper">
+                <div className="skeleton aspect-square" />
+                <div className="space-y-3 p-5">
+                  <div className="skeleton h-4 w-3/4 rounded" />
+                  <div className="skeleton h-3 w-full rounded" />
+                  <div className="skeleton h-3 w-2/3 rounded" />
+                  <div className="skeleton h-4 w-20 rounded" />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
       {products && (
         <>
@@ -184,8 +208,13 @@ export default function Products() {
                 {visible.length} {visible.length === 1 ? 'style' : 'styles'}
               </p>
               <ul className="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {visible.map((product) => (
-                  <ProductCard key={product.product_id} product={product} />
+                {visible.map((product, i) => (
+                  <ProductCard
+                    key={product.product_id}
+                    product={product}
+                    stock={stock[product.product_id]}
+                    index={i}
+                  />
                 ))}
               </ul>
             </>

@@ -734,6 +734,46 @@ bought only in ways that cannot touch correctness.
 
 ---
 
+## Problem 10: Style the website
+
+### Prompt
+
+> Problem 10: Style the website
+>
+> Let's add a creative design to the site so it feels like a real storefront. I feel like we kind of did this already with the auto-theme we put in. Let's make sure that the fonts, color, hierarchy, motion, product presentation, and chat feel are all professional and aligned to what looks good, and what is user friendly - it needs to be easy to navigate, easy to know what is clickable, and
+>
+> Note I'll get more points on the assignment for imaginative and innovative design. So lets make it cool , very user friendly, and add some visual interest to it so it doesn't look like it was built on html by me as a 13 year old. I like how on the product page the images get larger as you hover...features like that are nice.
+>
+> Once the designs are done, write output/design.md including what was changed, and why it should help customers stick around and buy. Keep it concrete and short.
+>
+> Make sure we include my design elements are meant to be user centric.
+
+Built a real design system and wrote [`output/design.md`](output/design.md).
+
+Typography is **Fraunces** (a variable serif with an optical-size axis, so headings use
+properly drawn display letterforms rather than scaled-up body type) over **Inter**. Colour
+became a four-step ink ramp with one accent reserved for things that act, plus a separate
+warm tone used only for real scarcity. The hover-zoom Christine liked on the product page
+now runs across every card, alongside a "View details" chip so there is no doubt the whole
+card is clickable.
+
+Added an editorial hero built from real catalogue photography, live stock badges drawn
+from inventory, staggered card entrances, shimmer skeletons instead of a loading line, a
+sticky product image, and a chat panel with animated typing dots and a monogram.
+
+Measured rather than asserted: body text contrast **7.08:1** (WCAG AAA) and headings
+**17.45:1**, no horizontal overflow at 375px, and all motion disabled under
+`prefers-reduced-motion`.
+
+Found and fixed a content problem on the way: three products carried
+*"Vision blocked; filename-based stub"* as their description — the instructor's catalogue
+generator was refused by a content filter — and that text was being shown to shoppers. It
+is now replaced with an honest line, and the agent is told the description is missing so
+it does not describe what it cannot see. Those are the same three products with no
+recorded colours.
+
+---
+
 <!--
 Template for the next problem. Copy below this line and replace N and the bracketed text.
 

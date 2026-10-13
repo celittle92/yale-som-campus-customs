@@ -64,6 +64,12 @@ class ProductLookup(BaseModel):
         "from. Each product comes in the one colourway pictured."
     )
     description: str
+    has_written_description: bool = Field(
+        default=True,
+        description="False for the few products with no real description recorded. When "
+        "false, do not describe the garment — say we have not written one up and point "
+        "to the photo.",
+    )
 
 
 class ProductDetails(ProductLookup):

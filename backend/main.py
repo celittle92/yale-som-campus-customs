@@ -113,7 +113,8 @@ def health() -> dict[str, object]:
 @app.get("/api/products", response_model=list[ProductSummary])
 def products() -> list[dict]:
     return [
-        {k: v for k, v in asdict(p).items() if k != "search_tags"}
+        {k: v for k, v in asdict(p).items()
+         if k not in ("search_tags", "has_written_description")}
         for p in list_products()
     ]
 
@@ -130,7 +131,8 @@ def product(
     user_id = sessions.user_id_for(campus_customs_session)
     if user_id is not None:
         record_view(user_id, product_id)
-    return {**asdict(found), "sizes": get_inventory(product_id)}
+    payload = {k: v for k, v in asdict(found).items() if k != "has_written_description"}
+    return {**payload, "sizes": get_inventory(product_id)}
 
 
 @app.get("/api/products/{product_id}/image")
@@ -217,7 +219,8 @@ def similar(product_id: str, limit: int = 8) -> list[dict]:
     for match in similar_products(product_id, limit):
         full = get_product(match.product_id)
         if full is not None:
-            out.append({k: v for k, v in asdict(full).items() if k != "search_tags"})
+            out.append({k: v for k, v in asdict(full).items()
+                        if k not in ("search_tags", "has_written_description")})
     return out
 
 
@@ -250,7 +253,8 @@ def get_recently_viewed(
     for product_id in recently_viewed(user_id):
         found = get_product(product_id)
         if found is not None:
-            out.append({k: v for k, v in asdict(found).items() if k != "search_tags"})
+            out.append({k: v for k, v in asdict(found).items()
+                        if k not in ("search_tags", "has_written_description")})
     return out
 
 
@@ -400,7 +404,10 @@ async def chat(
         if found is None:
             logger.warning("agent returned unknown product_id %r", product_id)
             continue
-        cards.append({k: v for k, v in asdict(found).items() if k != "search_tags"})
+        cards.append(
+            {k: v for k, v in asdict(found).items()
+             if k not in ("search_tags", "has_written_description")}
+        )
 
     saved = False
     if user_id:

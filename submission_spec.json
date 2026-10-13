@@ -38,6 +38,8 @@
     "output/usability.md",
     "frontend/src/validation.ts",
     "frontend/src/components/Field.tsx",
+    "output/design.md",
+    "frontend/src/index.css",
     "requirements.txt",
     ".env.example",
     ".gitignore",

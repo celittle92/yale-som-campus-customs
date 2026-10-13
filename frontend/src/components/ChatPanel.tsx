@@ -133,8 +133,12 @@ export default function ChatPanel() {
       <button
         type="button"
         onClick={openPanel}
-        className="fixed right-5 bottom-5 z-50 cursor-pointer rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-ink"
+        className="group fixed right-5 bottom-5 z-50 flex cursor-pointer items-center gap-2.5 rounded-full bg-accent px-5 py-3.5 text-sm font-semibold text-white shadow-lift transition-all duration-300 ease-[var(--ease-out-soft)] hover:-translate-y-0.5 hover:bg-accent-deep"
       >
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/70" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+        </span>
         Ask us anything
       </button>
     )
@@ -143,10 +147,19 @@ export default function ChatPanel() {
   return (
     <aside
       aria-label="Shop assistant"
-      className="fixed right-5 bottom-5 z-50 flex h-[32rem] w-[22rem] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-lg border border-line bg-paper shadow-xl"
+      className="animate-panel-in fixed right-5 bottom-5 z-50 flex h-[34rem] w-[23rem] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-2xl border border-line bg-paper shadow-panel"
     >
-      <div className="flex items-center justify-between border-b border-line bg-accent px-4 py-3">
-        <h2 className="text-sm font-semibold text-white">Shop assistant</h2>
+      <div className="flex items-center justify-between bg-accent px-4 py-3.5">
+        <div className="flex items-center gap-2.5">
+          <span
+            aria-hidden="true"
+            className="grid h-7 w-7 place-items-center rounded-full bg-white/15 text-[11px] font-semibold text-white"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            CC
+          </span>
+          <h2 className="text-sm font-semibold text-white">Shop assistant</h2>
+        </div>
         <button
           type="button"
           onClick={closePanel}
@@ -165,8 +178,8 @@ export default function ChatPanel() {
               // of products reads as a list rather than one run-on sentence.
               className={
                 message.role === 'user'
-                  ? 'ml-auto w-fit max-w-[85%] rounded-lg bg-accent px-3 py-2 text-sm whitespace-pre-line text-white'
-                  : 'mr-auto w-fit max-w-[85%] rounded-lg bg-cream px-3 py-2 text-sm whitespace-pre-line text-body'
+                  ? 'animate-bubble-in ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-accent px-3.5 py-2.5 text-sm whitespace-pre-line text-white shadow-sm'
+                  : 'animate-bubble-in mr-auto w-fit max-w-[85%] rounded-2xl rounded-bl-md bg-sand px-3.5 py-2.5 text-sm whitespace-pre-line text-body'
               }
             >
               {renderText(message.content)}
@@ -182,7 +195,7 @@ export default function ChatPanel() {
                     <Link
                       to={`/products/${product.product_id}`}
                       onClick={closePanel}
-                      className="flex items-center gap-3 rounded-lg border border-line bg-paper p-2 transition-colors hover:border-accent hover:bg-accent-soft"
+                      className="flex items-center gap-3 rounded-xl border border-line bg-paper p-2 transition-all duration-300 hover:-translate-y-px hover:border-accent/40 hover:shadow-card"
                     >
                       <img
                         src={product.image_url}
@@ -206,9 +219,15 @@ export default function ChatPanel() {
           </div>
         ))}
         {sending && (
-          <p className="mr-auto rounded-lg bg-cream px-3 py-2 text-sm text-muted italic">
-            Thinking…
-          </p>
+          <div
+            role="status"
+            aria-label="The shop assistant is replying"
+            className="animate-bubble-in mr-auto flex w-fit items-center gap-1.5 rounded-2xl rounded-bl-md bg-sand px-4 py-3"
+          >
+            <span className="dot h-1.5 w-1.5 rounded-full bg-muted" />
+            <span className="dot h-1.5 w-1.5 rounded-full bg-muted" />
+            <span className="dot h-1.5 w-1.5 rounded-full bg-muted" />
+          </div>
         )}
         {error && (
           <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
@@ -257,12 +276,12 @@ export default function ChatPanel() {
           onChange={(event) => setDraft(event.target.value)}
           placeholder="Do you have hoodies in XL?"
           maxLength={2000}
-          className="flex-1 rounded border border-line bg-cream px-3 py-2 text-sm text-ink placeholder:text-muted"
+          className="flex-1 rounded-full border border-line bg-cream px-4 py-2.5 text-sm text-ink transition-colors placeholder:text-muted focus:border-accent"
         />
         <button
           type="submit"
           disabled={sending || !draft.trim()}
-          className="cursor-pointer rounded bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink disabled:cursor-not-allowed disabled:opacity-50"
+          className="cursor-pointer rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-white transition-all duration-300 hover:bg-accent-deep disabled:cursor-not-allowed disabled:opacity-40"
         >
           Send
         </button>

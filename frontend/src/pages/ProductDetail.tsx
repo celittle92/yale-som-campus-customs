@@ -69,25 +69,31 @@ export default function ProductDetail() {
 
       <div className="mt-6 grid gap-10 lg:grid-cols-2">
         {/* Large image on the left, full product text on the right. */}
-        <div className="overflow-hidden rounded-lg border border-line bg-paper">
-          <img
-            src={product.image_url}
-            alt={product.name}
-            className="w-full object-cover"
-          />
+        {/* The image stays put while the details scroll — on a product page the photo
+            is the thing you keep referring back to. */}
+        <div className="lg:sticky lg:top-24 lg:self-start">
+          <div className="group overflow-hidden rounded-2xl border border-line bg-sand shadow-card">
+            <img
+              src={product.image_url}
+              alt={product.name}
+              className="w-full object-cover transition-transform duration-700 ease-[var(--ease-out-soft)] group-hover:scale-[1.04]"
+            />
+          </div>
         </div>
 
         <div>
-          <h1 className="font-display text-3xl leading-tight font-bold text-ink">
+          <h1 className="font-display text-4xl leading-[1.1] font-bold text-ink">
             {product.name}
           </h1>
-          <p className="mt-2 text-sm text-muted capitalize">{product.garment_type}</p>
+          <p className="mt-2.5 text-xs tracking-[0.12em] text-muted uppercase">
+            {product.garment_type}
+          </p>
 
-          <p className="mt-5 text-2xl font-semibold text-accent">
+          <p className="mt-6 font-display text-4xl font-semibold text-accent">
             {formatPrice(product.price)}
           </p>
 
-          <p className="mt-5 leading-relaxed text-body">{product.description}</p>
+          <p className="mt-6 text-[15px] leading-relaxed text-body">{product.description}</p>
 
           {/* Colours describe the one garment pictured — `inventory` has no colour
               dimension and there is a single image per product. Rendering these as
@@ -104,9 +110,11 @@ export default function ProductDetail() {
             ) : (
               /* Three catalogue products have an empty colors array. Say so rather
                  than inferring a colour from the description or the photo. */
+              /* The three products with no recorded colours are the same three with no
+                 written description, so pointing at the description would be useless. */
               <p className="mt-2 text-sm text-muted">
-                We do not have colours recorded for this item. The description and photo
-                are the best guide, or ask us in the shop.
+                We do not have colours recorded for this item — the photo is the best
+                guide, or ask us in the shop.
               </p>
             )}
           </section>
@@ -143,10 +151,10 @@ export default function ProductDetail() {
                         }
                         className={
                           !size.in_stock
-                            ? 'cursor-not-allowed rounded border border-line bg-cream px-4 py-2 text-sm text-muted line-through'
+                            ? 'cursor-not-allowed rounded-full border border-line bg-sand px-4 py-2 text-sm text-muted line-through'
                             : isSelected
-                              ? 'cursor-pointer rounded border-2 border-accent bg-accent-soft px-4 py-2 text-sm font-semibold text-accent'
-                              : 'cursor-pointer rounded border border-line bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-accent hover:bg-accent-soft'
+                              ? 'cursor-pointer rounded-full border-2 border-accent bg-accent px-4 py-2 text-sm font-semibold text-white shadow-sm'
+                              : 'cursor-pointer rounded-full border border-line bg-paper px-4 py-2 text-sm font-medium text-ink transition-all duration-300 hover:-translate-y-px hover:border-accent hover:bg-accent-soft'
                         }
                       >
                         {size.size}
@@ -165,7 +173,7 @@ export default function ProductDetail() {
                 </p>
 
                 {selected && (
-                  <div className="mt-4 rounded-lg border border-line bg-accent-soft p-4">
+                  <div className="animate-rise mt-4 rounded-xl border border-accent/25 bg-accent-soft p-4">
                     <p className="text-sm text-ink">
                       <span className="font-semibold">Size {selected.size}</span> —{' '}
                       {selected.quantity} in stock.
@@ -177,7 +185,7 @@ export default function ProductDetail() {
                           `Is the ${product.name} still available in size ${selected.size}?`,
                         )
                       }
-                      className="mt-3 cursor-pointer rounded bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink"
+                      className="mt-3 cursor-pointer rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-px hover:bg-accent-deep"
                     >
                       Ask about size {selected.size}
                     </button>

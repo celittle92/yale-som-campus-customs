@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 from dataclasses import dataclass
 from functools import lru_cache
@@ -67,6 +68,19 @@ def _loads(raw: str | None) -> list[str]:
     return [str(v) for v in value] if isinstance(value, list) else []
 
 
+# Three catalogue rows carry a generation failure instead of a description: the
+# instructor's vision pass was refused by a content filter and fell back to a stub
+# ("Vision blocked; filename-based stub"). They are the same three rows with an empty
+# colors array. Showing that text to a shopper looks broken, so it is detected and
+# replaced with an honest line — and the agent is told the description is missing
+# rather than being handed a sentence that describes nothing.
+_STUB_DESCRIPTION = re.compile(r"vision blocked|filename-based stub", re.IGNORECASE)
+NO_DESCRIPTION = (
+    "We have not written a description for this one yet — the photo is the best guide, "
+    "or ask us in the shop."
+)
+
+
 @dataclass(frozen=True)
 class Product:
     product_id: str
@@ -77,6 +91,7 @@ class Product:
     search_tags: list[str]
     price: float
     image_url: str
+    has_written_description: bool
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "Product":
@@ -84,7 +99,12 @@ class Product:
             product_id=row["product_id"],
             name=row["name"],
             garment_type=row["garment_type"],
-            description=row["description"],
+            description=(
+                NO_DESCRIPTION
+                if _STUB_DESCRIPTION.search(row["description"] or "")
+                else row["description"]
+            ),
+            has_written_description=not _STUB_DESCRIPTION.search(row["description"] or ""),
             colors=_loads(row["colors"]),
             search_tags=_loads(row["search_tags"]),
             price=float(row["price"]),
