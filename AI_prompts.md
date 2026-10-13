@@ -823,6 +823,43 @@ recorded colours.
 
 ---
 
+## Problem 11: Site testing (app check)
+
+### Prompt
+
+> Problem 11: Site testing (app check)
+>
+> We need to test the live site and document it in output/app_check.html (a page you can double click to open). Include screenshots and short captions for :
+>
+> * Chat checking inventory level of an item (honest stock/price from the database)
+> * The dynamic search-result cards appearing after a category question (such as hoodies, crewnecks)
+> * One of the usability features from Problem 9.
+>
+> Make the HTML easy to grade: provide a heading for each check, screenshot, and one or two sentences on what the screenshot proves.
+>
+> Put the screenshot image files in output/app_check_images/ and link them from app_check.html with relative paths (for example app_check_images/inventory.png)
+
+[`output/app_check.html`](output/app_check.html) — a standalone page with a heading, a
+screenshot and a one-or-two sentence verdict per check. Five images in
+[`output/app_check_images/`](output/app_check_images/), all linked relatively.
+
+Rather than taking the screenshots by hand, a script drove a real Chrome over the DevTools
+Protocol against both running servers: it opened the chat panel, typed each question, waited
+for the reply to finish, and captured the viewport. The replies quoted in the HTML were read
+back out of the live page, so the document quotes the run instead of my memory of it. Two
+billed model calls, one per chat check.
+
+The inventory check is verified three ways — the `inventory` table, the size buttons on the
+product page, and the assistant's reply all agree on all six sizes and the price. The
+engineering record is in [`output/harness.md`](output/harness.md#problem-11-site-testing).
+
+One result came out honest rather than flattering: ticking "Exclude out of stock" on the
+hoodie filter removes nothing, because no product in this catalogue is sold out in every
+size. Both that screenshot and the size-filtered one (27 → 21) are in the page, with the
+reason stated, rather than showing only the one that looks better.
+
+---
+
 <!--
 Template for the next problem. Copy below this line and replace N and the bracketed text.
 

@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Campus Customs — app check</title>
+<style>
+  :root {
+    --cream: #faf6ef;
+    --paper: #fffdf9;
+    --sand:  #f1ebe0;
+    --ink:   #171410;
+    --body:  #4a443c;
+    --muted: #857c70;
+    --line:  #e2dacd;
+    --navy:  #10284f;
+    --navy-soft: #e8edf6;
+    --good:  #1f6b43;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 3rem 1.5rem 5rem;
+    background: var(--cream);
+    color: var(--body);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 56rem; margin: 0 auto; }
+  h1, h2, h3 { font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; color: var(--ink); }
+  h1 { font-size: 2.5rem; line-height: 1.15; letter-spacing: -0.015em; margin: 0 0 .5rem; }
+  h2 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -0.005em; }
+  h3 { font-size: 1.05rem; margin: 2rem 0 .5rem; }
+  .kicker {
+    font: 600 .72rem/1 -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--navy);
+    margin: 0 0 1rem;
+  }
+  .lede { font-size: 1.05rem; max-width: 46rem; }
+  .meta {
+    margin: 2rem 0 0; padding: 1rem 1.25rem;
+    background: var(--paper); border: 1px solid var(--line); border-radius: .6rem;
+    font-size: .9rem;
+  }
+  .meta dl { display: grid; grid-template-columns: max-content 1fr; gap: .35rem 1.25rem; margin: 0; }
+  .meta dt { color: var(--muted); }
+  .meta dd { margin: 0; color: var(--ink); }
+  section.check {
+    margin-top: 3.5rem; padding-top: 2.5rem; border-top: 1px solid var(--line);
+  }
+  .tag {
+    display: inline-block; margin-bottom: .75rem; padding: .22rem .7rem;
+    background: var(--navy-soft); color: var(--navy); border-radius: 999px;
+    font: 600 .72rem/1.5 -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: .08em; text-transform: uppercase;
+  }
+  .proves {
+    margin: .75rem 0 1.5rem; max-width: 46rem;
+  }
+  .proves strong { color: var(--ink); }
+  figure { margin: 0 0 1.5rem; }
+  figure img {
+    display: block; width: 100%; height: auto;
+    border: 1px solid var(--line); border-radius: .6rem;
+    box-shadow: 0 10px 30px -18px rgba(23, 20, 16, .45);
+    background: var(--paper);
+  }
+  figcaption { margin-top: .6rem; font-size: .85rem; color: var(--muted); }
+  .quote {
+    margin: 1.25rem 0; padding: 1rem 1.25rem;
+    background: var(--paper); border-left: 3px solid var(--navy); border-radius: 0 .4rem .4rem 0;
+  }
+  .quote p { margin: 0 0 .5rem; }
+  .quote p:last-child { margin-bottom: 0; }
+  .quote .who {
+    display: block; font: 600 .7rem/1.5 -apple-system, sans-serif;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+  }
+  .quote .said { color: var(--ink); }
+  table {
+    width: 100%; border-collapse: collapse; margin: 1.25rem 0;
+    background: var(--paper); font-size: .9rem;
+  }
+  caption {
+    caption-side: top; text-align: left; padding-bottom: .5rem;
+    font-size: .85rem; color: var(--muted);
+  }
+  th, td { padding: .5rem .75rem; border: 1px solid var(--line); text-align: left; }
+  th { background: var(--sand); color: var(--ink); font-weight: 600; }
+  td.num { font-variant-numeric: tabular-nums; }
+  .match { color: var(--good); font-weight: 600; }
+  code {
+    font: .85em/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--sand); padding: .1rem .35rem; border-radius: .25rem;
+  }
+  .note {
+    margin: 1.25rem 0; padding: .85rem 1.1rem;
+    background: var(--sand); border-radius: .45rem; font-size: .9rem;
+  }
+  footer {
+    margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--line);
+    font-size: .85rem; color: var(--muted);
+  }
+  footer ul { padding-left: 1.1rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="kicker">Campus Customs · Problem 11</p>
+  <h1>App check</h1>
+  <p class="lede">
+    Three checks run against the site while it was actually running, with the screenshot
+    each one produced. Nothing here is a mock-up or a re-typed answer: the chat replies
+    below are the exact text the assistant returned during the capture run, and every
+    number is cross-checked against <code>campus_customs.db</code>.
+  </p>
+
+  <div class="meta">
+    <dl>
+      <dt>Captured</dt><dd>13 October 2026, 7:03 pm (America/New_York)</dd>
+      <dt>Front end</dt><dd>React + Vite dev server, <code>http://localhost:5174</code></dd>
+      <dt>Back end</dt><dd>FastAPI, <code>uvicorn main:app --port 8000</code>, from <code>backend/</code></dd>
+      <dt>Agent</dt><dd>PydanticAI over <code>gpt-5.6-luna</code> via Portkey</dd>
+      <dt>Browser</dt><dd>Chrome 1440 × 1000, 2× pixel density, driven over the DevTools Protocol</dd>
+      <dt>Signed in</dt><dd>No — every check below is what a brand-new visitor sees</dd>
+    </dl>
+  </div>
+
+  <!-- ─────────────────────────── Check 1 ─────────────────────────── -->
+  <section class="check">
+    <span class="tag">Check 1</span>
+    <h2>Chat answering an inventory question</h2>
+    <p class="proves">
+      <strong>What this proves:</strong> the assistant reports stock and price straight
+      from the database and says plainly when a size is sold out — the figures in the chat
+      bubble, the size buttons on the page, and the <code>inventory</code> table all agree
+      exactly, and no number was invented.
+    </p>
+
+    <figure>
+      <img src="app_check_images/inventory.png"
+           alt="The Davenport College Crewneck product page with the shop assistant open. The assistant has replied that the crewneck costs $58.00, that small is out of stock with 0 available, and that it is in stock in XS, M, L, XL and XXL. The size buttons on the page show XS 20 left, S struck through and marked out, M 5 left, L 12 left, XL 20 left, XXL 8 left." />
+      <figcaption>
+        Product page for the Davenport College Crewneck, with the question asked in the
+        floating chat panel.
+      </figcaption>
+    </figure>
+
+    <div class="quote">
+      <p><span class="who">Shopper asked</span>
+         <span class="said">How many Davenport College Crewnecks do you have in small, and what does it cost?</span></p>
+      <p><span class="who">Assistant replied</span>
+         <span class="said">The Davenport College Crewneck costs $58.00. Small is out of stock,
+         with 0 available. It is currently in stock in XS, M, L, XL, and XXL.</span></p>
+    </div>
+
+    <table>
+      <caption>Three-way check — the database, the page, and the chat reply</caption>
+      <thead>
+        <tr><th>Size</th><th>Database (<code>inventory</code>)</th><th>Shown on the page</th><th>Said in chat</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>XS</td><td class="num">20</td><td>XS 20 left</td><td>in stock</td></tr>
+        <tr><td><strong>S</strong></td><td class="num"><strong>0</strong></td><td>S — struck through, “out”</td><td><strong>“out of stock, with 0 available”</strong></td></tr>
+        <tr><td>M</td><td class="num">5</td><td>M 5 left</td><td>in stock</td></tr>
+        <tr><td>L</td><td class="num">12</td><td>L 12 left</td><td>in stock</td></tr>
+        <tr><td>XL</td><td class="num">20</td><td>XL 20 left</td><td>in stock</td></tr>
+        <tr><td>XXL</td><td class="num">8</td><td>XXL 8 left</td><td>in stock</td></tr>
+        <tr><td>Price</td><td class="num">58.0</td><td>$58.00</td><td>$58.00</td></tr>
+      </tbody>
+    </table>
+    <p class="note">
+      <span class="match">All seven rows agree.</span> The assistant never receives a price
+      or a quantity to repeat from memory — it calls <code>check_size_availability</code> and
+      <code>get_product_details</code>, which query the database at the moment of asking. A
+      validator then re-checks every dollar figure in the reply against the real price list
+      before the answer is allowed out, so a hallucinated price cannot reach the shopper.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────── Check 2 ─────────────────────────── -->
+  <section class="check">
+    <span class="tag">Check 2</span>
+    <h2>A category question updates the page with product cards</h2>
+    <p class="proves">
+      <strong>What this proves:</strong> asking the chat for a category moves the shopper to
+      the Products page and renders real catalogue cards there — the panel is not a dead end
+      that only talks. The heading repeats the question that produced them, so it is obvious
+      where the list came from.
+    </p>
+
+    <figure>
+      <img src="app_check_images/chat-search-cards.png"
+           alt="The Products page after asking the chat for crewneck sweatshirts. A tinted section headed Crewneck sweatshirts reads 6 matches for Show me your crewneck sweatshirts, with full product cards below it: Baseball Left Chest Crewneck $58.00, Champion Mens Triumph Raglan Crew $58.00, Champion Reverse Weave Crewneck $58.00 with an Only 2 sizes left badge, and more. The chat panel shows the same items as a list." />
+      <figcaption>
+        Typed from the home page; the site navigated to <code>/products</code> on its own and
+        rendered the matches above the normal grid.
+      </figcaption>
+    </figure>
+
+    <div class="quote">
+      <p><span class="who">Shopper asked</span>
+         <span class="said">Show me your crewneck sweatshirts</span></p>
+      <p><span class="who">Assistant replied</span>
+         <span class="said">We have 29 crewneck sweatshirts. The available styles include Yale
+         wordmarks, bulldog graphics, baseball, and a Davenport College design; the shown
+         styles are $58.00. Narrow them by graphic, colour, or size if you’d like.</span></p>
+      <p><span class="who">Page rendered</span>
+         <span class="said">“Crewneck sweatshirts — 6 matches for ‘Show me your crewneck sweatshirts’”,
+         plus six product cards and a <em>Back to chat</em> / <em>Clear</em> control.</span></p>
+    </div>
+
+    <p class="note">
+      The reply says <strong>29</strong> and the page shows <strong>6</strong>, and both are
+      correct: the catalogue really does hold 29 crewneck sweatshirts, and a single reply is
+      capped at six product ids so the panel stays readable. The cap is enforced by the
+      response model, not by the wording of the prompt.
+    </p>
+    <p class="note">
+      <strong>The cards cannot be fabricated.</strong> The agent returns only product
+      <em>ids</em>; the backend looks each one up in the catalogue and sends back the name,
+      price and image. An id that is not in the database fails validation and the agent is
+      asked to try again, so every card on screen is a real row — which is why the
+      “Only 2 sizes left” badge on the third card is trustworthy too.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────── Check 3 ─────────────────────────── -->
+  <section class="check">
+    <span class="tag">Check 3 · Problem 9 usability</span>
+    <h2>The product filter, and it respects stock</h2>
+    <p class="proves">
+      <strong>What this proves:</strong> the type / colour / size / exclude-out-of-stock
+      filter is live on the Products page, the counts it reports match the database, and
+      choosing a size hides the styles that are sold out in that size — so a shopper is
+      never shown something they cannot actually buy.
+    </p>
+
+    <figure>
+      <img src="app_check_images/filter.png"
+           alt="The Products page filter set to Type: Hoodie with the Exclude out of stock checkbox ticked. The counter reads 27 of 102 styles and the Matching products heading reads 27 styles." />
+      <figcaption>
+        <code>/products?type=Hoodie&amp;inStock=1</code> — <strong>27 of 102 styles</strong>.
+        The filter state lives in the URL, so a filtered view can be shared, survives a
+        reload, and the back button undoes it.
+      </figcaption>
+    </figure>
+
+    <figure>
+      <img src="app_check_images/filter-size.png"
+           alt="The same filter with Type: Hoodie and Size: XS. The counter now reads 21 of 102 styles, and a line under the size control reads Only showing items in stock in XS." />
+      <figcaption>
+        <code>/products?type=Hoodie&amp;size=XS</code> — <strong>21 of 102 styles</strong>,
+        with “Only showing items in stock in XS.” printed under the control.
+      </figcaption>
+    </figure>
+
+    <table>
+      <caption>The counts on screen, checked against the database</caption>
+      <thead>
+        <tr><th>Filter</th><th>Shown on screen</th><th>SQL over <code>catalogue</code> + <code>inventory</code></th></tr>
+      </thead>
+      <tbody>
+        <tr><td>None</td><td class="num">102 styles</td><td class="num">102 rows in <code>catalogue</code></td></tr>
+        <tr><td>Type = Hoodie</td><td class="num">27 of 102</td><td class="num">27 hoodies</td></tr>
+        <tr><td>Type = Hoodie, size XS in stock</td><td class="num">21 of 102</td><td class="num">21 hoodies with <code>quantity &gt; 0</code> at XS</td></tr>
+      </tbody>
+    </table>
+
+    <p class="note">
+      <strong>An honest note about the second screenshot.</strong> No product in this
+      catalogue is sold out in <em>every</em> size, so ticking “Exclude out of stock” on its
+      own correctly removes nothing — 27 hoodies in, 27 out. Picking a size is where the
+      stock rule actually bites: six hoodies have no XS left, so the list drops to 21. Both
+      screenshots are here rather than only the flattering one, because a filter that
+      silently does nothing looks broken unless you can see where it does work.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────── Extra ─────────────────────────── -->
+  <section class="check">
+    <span class="tag">Also from Problem 9</span>
+    <h2>“You might also like”</h2>
+    <p class="proves">
+      <strong>What this proves:</strong> the recommendation carousel is live on every product
+      page, computed by the backend from garment type and colour rather than hard-coded —
+      a grey Davenport crewneck returns five other crewnecks at the same $58.00.
+    </p>
+    <figure>
+      <img src="app_check_images/recommendations.png"
+           alt="The lower half of the Davenport College Crewneck page showing a You might also like row, subtitled Similar in style and colour to this one, containing Jonathan Edwards College Crewneck, Baseball Left Chest Crewneck, Yale Cousin Crewneck, Pierson College Crewneck and Soccer Left Chest Crewneck, all $58.00." />
+      <figcaption>
+        The same product page as Check 1, scrolled down. Each tile is an ordinary product
+        link, so it opens the single-item page like every other card on the site.
+      </figcaption>
+    </figure>
+  </section>
+
+  <footer>
+    <h3>How these screenshots were produced</h3>
+    <ul>
+      <li>Both servers were started normally — <code>uvicorn main:app --port 8000</code> from
+          <code>backend/</code>, and the Vite dev server on 5174.</li>
+      <li>A script drove a real Chrome over the DevTools Protocol: it opened the chat panel,
+          typed each question, waited for the assistant to finish, and captured the viewport.
+          The replies quoted above were read back out of the page, so they are the run's own
+          words.</li>
+      <li>Every figure was then checked against <code>campus_customs.db</code> with a
+          read-only SQLite query. The database itself is not committed, as the assignment
+          requires.</li>
+      <li>Two live model calls were made in total, one per chat check.</li>
+    </ul>
+  </footer>
+
+</div>
+</body>
+</html>

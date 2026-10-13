@@ -45,6 +45,12 @@
     ".gitignore",
     "README.md",
     "AI_prompts.md",
-    "output/harness.md"
+    "output/harness.md",
+    "output/app_check.html",
+    "output/app_check_images/inventory.png",
+    "output/app_check_images/chat-search-cards.png",
+    "output/app_check_images/filter.png",
+    "output/app_check_images/filter-size.png",
+    "output/app_check_images/recommendations.png"
   ]
 }

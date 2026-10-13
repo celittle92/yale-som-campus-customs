@@ -32,6 +32,10 @@ get price and stock answers that come from the supplied database rather than fro
 - [Problem 6: Tools for product info and stock](#problem-6-tools-for-product-info-and-stock)
 - [Problem 7: Chat search that updates the page](#problem-7-chat-search-that-updates-the-page)
 - [Problem 8: Customer memory](#problem-8-customer-memory)
+- Problem 9: Usability improvements — written up separately in [`usability.md`](usability.md)
+- Problem 10: Styling the site — written up separately in [`design.md`](design.md)
+- [Problem 11: Site testing](#problem-11-site-testing) — the screenshots are in
+  [`app_check.html`](app_check.html)
 
 ---
 
@@ -591,6 +595,9 @@ Two notes worth keeping:
   Christine's). They can be deleted on request and were left in place rather than removed
   unasked.
 - No rate limiting on login attempts, so password guessing is unthrottled.
+- Sessions do not survive a backend restart, and there is no expiry or "log out everywhere".
+- There is no password reset and no email verification. Neither is asked for by the
+  assignment; both would matter in production.
 
 ---
 
@@ -1231,8 +1238,76 @@ message still cannot inject markup. Verified: zero bubbles showing literal aster
 rendering bold.
 
 **Cost:** three billed exchanges, bringing HW4 to fourteen.
-- Sessions do not survive a backend restart, and there is no expiry or "log out everywhere".
-- There is no password reset and no email verification. Neither is asked for by the
-  assignment; both would matter in production.
-- `chat_messages` is not yet written. Problem 5 wires the agent, and D2's persistence for
-  signed-in users lands with it.
+
+---
+
+## Problem 11: Site testing
+
+The deliverable is [`app_check.html`](app_check.html) — a page that opens by double-clicking,
+with a heading, a screenshot and a short verdict for each check. The images live in
+[`app_check_images/`](app_check_images/) and are linked with relative paths, so the folder
+moves as one piece.
+
+### How the screenshots were taken
+
+Both servers were started the normal way (`uvicorn main:app --port 8000` from `backend/`,
+Vite on 5174) and a script drove a real Chrome over the **DevTools Protocol**: it opened the
+chat panel, typed the question, waited for the reply to finish rendering, then captured the
+viewport at 1440 × 1000 and 2× pixel density.
+
+Scripting it rather than taking the screenshots by hand buys three things:
+
+- the replies quoted in the HTML are **read back out of the live DOM**, so the page quotes
+  the run rather than someone's memory of it;
+- the run is repeatable after a code change, which matters because an app check goes stale
+  the moment the app moves;
+- the checks wait on real conditions (`the typing indicator has gone`, `every image is
+  complete`) instead of a fixed sleep, so a slow first call cannot produce a screenshot of a
+  half-drawn page. That exact mistake cost an hour in Problem 7.
+
+Signed out for every check, deliberately: it is what a first-time visitor sees, and it keeps
+the evidence clear of the seeded test account.
+
+### What each check verifies
+
+| Check | Screenshot | The claim it settles |
+|---|---|---|
+| Inventory and price in chat | `inventory.png` | Stock and price come from the database, and a sold-out size is stated plainly |
+| Chat search updates the page | `chat-search-cards.png` | A category question renders real catalogue cards on `/products` |
+| Problem 9 filter | `filter.png`, `filter-size.png` | The filter works, its counts match the database, and size implies in-stock |
+| Problem 9 recommendations | `recommendations.png` | "You might also like" is live on the product page |
+
+### The three-way check
+
+The inventory check is the one with teeth, so it is verified three ways rather than one. For
+the Davenport College Crewneck:
+
+| Size | `inventory` table | Size button on the page | The assistant's reply |
+|---|---|---|---|
+| XS | 20 | XS 20 left | in stock |
+| **S** | **0** | S struck through, "out" | **"out of stock, with 0 available"** |
+| M | 5 | M 5 left | in stock |
+| L | 12 | L 12 left | in stock |
+| XL | 20 | XL 20 left | in stock |
+| XXL | 8 | XXL 8 left | in stock |
+| Price | 58.0 | $58.00 | $58.00 |
+
+All seven agree. The page and the chat reach the database by different routes — the product
+endpoint for one, the agent's `check_size_availability` and `get_product_details` tools for
+the other — so agreement across all three is a real check, not the same number printed twice.
+
+### One honest result worth recording
+
+The first filter screenshot was `type=Hoodie` with **"Exclude out of stock" ticked**, and it
+removed nothing: 27 hoodies in, 27 out. That is not a bug. **No product in this catalogue is
+sold out in every size**, so the checkbox has nothing to exclude. The stock rule only bites
+once a size is chosen, where six hoodies have no XS left and the list drops to 21 of 102.
+
+Both screenshots are in the HTML rather than only the flattering one. A filter that appears
+to do nothing reads as broken unless the grader can also see where it does work, and the
+honest version of that evidence is two pictures, not one.
+
+### Cost
+
+Two billed exchanges, one per chat check. The running total stops being exact here: the
+Problem 9 latency measurements were live calls and were not tallied at the time.
