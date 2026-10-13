@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { formatPrice, sendChatMessage } from '../api'
 import { useAuth } from '../AuthContext'
 import { useChat } from '../ChatContext'
@@ -18,8 +18,10 @@ const GREETING: Message = {
 }
 
 export default function ChatPanel() {
-  const { open, prefill, openPanel, closePanel, consumePrefill } = useChat()
+  const { open, prefill, openPanel, closePanel, consumePrefill, setResults } = useChat()
   const { user } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
   const [messages, setMessages] = useState<Message[]>([GREETING])
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
@@ -55,6 +57,22 @@ export default function ChatPanel() {
         ...prev,
         { role: 'assistant', content: reply.reply, products: reply.products },
       ])
+
+      // Publish the matches to the rest of the site, so the Products page can render
+      // them as full cards rather than them living only inside this panel.
+      if (reply.products.length > 0) {
+        setResults({
+          label: reply.match_label ?? null,
+          products: reply.products,
+          question: message,
+        })
+        // Take the shopper to the page only when they asked to see options. A single
+        // product usually means a follow-up about something they are already looking
+        // at, and navigating away from that would be rude.
+        if (reply.products.length > 1 && !location.pathname.startsWith('/products/')) {
+          navigate('/products')
+        }
+      }
     } catch {
       setError('The shop assistant is not available right now. Please try again.')
     } finally {

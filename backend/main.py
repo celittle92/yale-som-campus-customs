@@ -13,12 +13,20 @@ from dataclasses import asdict
 from fastapi import Cookie, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, EmailStr, Field, field_validator
 from pydantic_ai.exceptions import ModelHTTPError
 
 import sessions
 from agent import MAX_HISTORY_MESSAGES, build_agent, model_name
 from auth import hash_password, verify_password
+from models import (
+    ChatReply,
+    LoginRequest,
+    ChatRequest,
+    ProductDetail,
+    ProductSummary,
+    PublicUser,
+    SignupRequest,
+)
 from db import (
     EmailAlreadyRegistered,
     create_user,
@@ -56,62 +64,6 @@ app.add_middleware(
 )
 
 
-class ProductSummary(BaseModel):
-    product_id: str
-    name: str
-    garment_type: str
-    description: str
-    colors: list[str]
-    price: float
-    image_url: str
-
-
-class SizeStock(BaseModel):
-    size: str
-    quantity: int
-    in_stock: bool
-
-
-class ProductDetail(ProductSummary):
-    search_tags: list[str]
-    sizes: list[SizeStock]
-
-
-class SignupRequest(BaseModel):
-    first_name: str = Field(min_length=1, max_length=100)
-    last_name: str = Field(min_length=1, max_length=100)
-    email: EmailStr
-    password: str = Field(min_length=8, max_length=256)
-    confirm_password: str = Field(min_length=8, max_length=256)
-
-    @field_validator("confirm_password")
-    @classmethod
-    def passwords_match(cls, value: str, info) -> str:
-        # Checked here as well as in the browser: client-side validation is a courtesy,
-        # not a control.
-        if value != info.data.get("password"):
-            raise ValueError("The two passwords do not match.")
-        return value
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str = Field(min_length=1, max_length=256)
-
-
-class PublicUser(BaseModel):
-    """Everything about a user that is safe to send to a browser.
-
-    `password_hash` is deliberately absent and must stay that way.
-    """
-
-    id: int
-    first_name: str | None
-    last_name: str | None
-    name: str
-    email: str
-
-
 def _public_user(row: sqlite3.Row) -> PublicUser:
     return PublicUser(
         id=row["id"],
@@ -132,16 +84,6 @@ def _set_session_cookie(response: Response, token: str) -> None:
         secure=False,
         path="/",
     )
-
-
-class ChatRequest(BaseModel):
-    message: str = Field(min_length=1, max_length=2000)
-
-
-class ChatReply(BaseModel):
-    reply: str
-    products: list[ProductSummary] = []
-    saved: bool = False
 
 
 @app.get("/api/health")
@@ -318,4 +260,10 @@ async def chat(
         save_exchange(user_id, request.message, answer.reply, cards)
         saved = True
 
-    return ChatReply(reply=answer.reply, products=cards, saved=saved)
+    return ChatReply(
+        reply=answer.reply,
+        products=cards,
+        # Only meaningful when there is something to label.
+        match_label=answer.product_match_label if cards else None,
+        saved=saved,
+    )

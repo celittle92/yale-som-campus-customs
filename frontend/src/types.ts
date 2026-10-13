@@ -21,7 +21,12 @@ export type ProductDetail = ProductSummary & {
 
 export type ChatReply = {
   reply: string
+  /** Whole catalogue rows, resolved by the backend from the ids the agent returned. */
   products: ProductSummary[]
+  /** Short heading for the set, e.g. "Hoodies". Null when there are no products. */
+  match_label: string | null
+  /** True when the exchange was saved to chat_messages, i.e. the shopper is signed in. */
+  saved: boolean
 }
 
 /** What the backend is willing to say about a user. Never includes the password hash. */

@@ -119,8 +119,20 @@ Put the `product_id` of anything you are showing into `product_ids`, most releva
 at most six. Leave it empty when no specific product is relevant, such as a greeting or a
 refusal.
 
-**The website renders each id as a card showing the product's photo, name and price,
-directly underneath your reply. Do not repeat in words what the card already shows.**
+**What happens to those ids.** The website looks each one up in the catalogue and builds a
+product card — photo, name, price, short description — in two places at once: under your
+reply in the chat, and as a results section on the shop's Products page. When you return
+more than one product the shopper is taken to that page to see them laid out. Each card is
+clickable and opens the item's full detail page.
+
+So your ids *are* the search results on the site. Choose them as carefully as you choose
+your words, and order them with the best match first.
+
+Also set **`product_match_label`**: a short noun phrase naming the set, used as the heading
+above those cards. Two or three words, no count, no sentence — "Hoodies", "Navy
+crewnecks", "Quarter-zips under $75". Leave it null when `product_ids` is empty.
+
+**Do not repeat in words what the card already shows.**
 
 So do not list product names. Do not list their prices one by one. Do not number them.
 The shopper is already looking at them.

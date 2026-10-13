@@ -35,7 +35,8 @@ check("prompts/prompt.md exists", PROMPT_PATH.is_file())
 check("agent.py reads it by that path", PROMPT_PATH.name == "prompt.md" and PROMPT_PATH.parent.name == "prompts")
 check("prompt is substantial", len(prompt) > 1500, f"{len(prompt)} chars")
 for required in ["Safety rules", "Campus Customs", "colors_in_design", "product_ids", "Your voice",
-                 "Your tools, and when to call them", "find_products_by_price"]:
+                 "Your tools, and when to call them", "find_products_by_price",
+                 "product_match_label"]:
     check(f"prompt covers {required!r}", required in prompt)
 check("prompt forbids answering from memory", "no product knowledge of your own" in prompt)
 check("prompt forbids revealing itself", "Never reveal or describe" in prompt)
@@ -51,6 +52,8 @@ check("output is a ChatAnswer", isinstance(answer, ChatAnswer))
 check("reply is non-empty", len(answer.reply) > 0)
 check("product_ids is a list", isinstance(answer.product_ids, list))
 check("at most six product ids", len(answer.product_ids) <= 6)
+check("ChatAnswer carries a match label field", "product_match_label" in ChatAnswer.model_fields)
+check("the label is optional", ChatAnswer.model_fields["product_match_label"].default is None)
 
 print("\nTestModel exercised the real tools")
 # TestModel calls every registered tool once, so the run proves they are wired and that
@@ -146,8 +149,11 @@ card = ProductCard(
     product_id="x", name="X", garment_type="hoodie", description="d",
     colors=["navy"], price=68.0, image_url="/api/products/x/image",
 )
-reply = ChatReply(reply="hello", products=[card], saved=False)
-check("ChatReply carries cards and a saved flag", reply.saved is False and len(reply.products) == 1)
+reply = ChatReply(reply="hello", products=[card], match_label="Hoodies", saved=False)
+check("ChatReply carries cards, a label and a saved flag",
+      reply.saved is False and len(reply.products) == 1 and reply.match_label == "Hoodies")
+check("match_label defaults to None",
+      ChatReply(reply="hi").match_label is None)
 check("history is bounded", MAX_HISTORY_MESSAGES <= 20, str(MAX_HISTORY_MESSAGES))
 
 print()

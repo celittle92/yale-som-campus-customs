@@ -7,7 +7,7 @@ model cannot invent a product, a price, or a colour even if it tries.
 """
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class ProductCard(BaseModel):
@@ -21,21 +21,6 @@ class ProductCard(BaseModel):
     colors: list[str]
     price: float
     image_url: str
-
-
-class SizeStock(BaseModel):
-    size: str
-    quantity: int
-    in_stock: bool
-
-
-class ProductSummary(ProductCard):
-    """Alias kept for the existing product routes."""
-
-
-class ProductDetail(ProductCard):
-    search_tags: list[str]
-    sizes: list[SizeStock]
 
 
 # --- What the tools hand back ------------------------------------------------------
@@ -142,6 +127,57 @@ class LookupError(BaseModel):
     suggestion: str | None = None
 
 
+# --- API response models -----------------------------------------------------------
+
+
+class ProductSummary(ProductCard):
+    """A product as `/api/products` returns it."""
+
+
+class ProductDetail(ProductCard):
+    """A product as `/api/products/{id}` returns it: catalogue plus stock."""
+
+    search_tags: list[str]
+    sizes: list[SizeStock]
+
+
+class SignupRequest(BaseModel):
+    """A create-account submission. Validated before any hashing happens."""
+
+    first_name: str = Field(min_length=1, max_length=100)
+    last_name: str = Field(min_length=1, max_length=100)
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=256)
+    confirm_password: str = Field(min_length=8, max_length=256)
+
+    @field_validator("confirm_password")
+    @classmethod
+    def passwords_match(cls, value: str, info) -> str:
+        # Checked here as well as in the browser: client-side validation is a courtesy,
+        # not a control.
+        if value != info.data.get("password"):
+            raise ValueError("The two passwords do not match.")
+        return value
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=256)
+
+
+class PublicUser(BaseModel):
+    """Everything about a user that is safe to send to a browser.
+
+    `password_hash` is deliberately absent and must stay that way.
+    """
+
+    id: int
+    first_name: str | None
+    last_name: str | None
+    name: str
+    email: str
+
+
 class ChatAnswer(BaseModel):
     """What the agent is required to produce. Validated by PydanticAI before we see it."""
 
@@ -168,6 +204,16 @@ class ChatAnswer(BaseModel):
             "chit-chat, or a refusal."
         ),
     )
+    product_match_label: str | None = Field(
+        default=None,
+        description=(
+            "A short noun phrase naming what the products in product_ids are, as a "
+            "heading: 'Hoodies', 'Navy crewnecks', 'Under $40'. Two or three words, no "
+            "sentence, no count — the website adds the count itself. Leave null when "
+            "product_ids is empty."
+        ),
+        max_length=60,
+    )
 
 
 class ChatRequest(BaseModel):
@@ -175,10 +221,21 @@ class ChatRequest(BaseModel):
 
 
 class ChatReply(BaseModel):
-    """The response body the chat widget receives."""
+    """The chat API contract — what `POST /api/chat` returns.
+
+    `products` are whole catalogue rows, resolved by the backend from the ids the agent
+    returned, so the front end can render cards without a second request and without
+    ever seeing a price the model wrote. The same list is rendered twice: under the reply
+    in the chat panel, and as a results section on the Products page.
+    """
 
     reply: str
     products: list[ProductCard] = Field(default_factory=list)
+    match_label: str | None = Field(
+        default=None,
+        description="Short heading for the set, e.g. 'Hoodies'. Null when there are no "
+        "products.",
+    )
     saved: bool = Field(
         default=False,
         description="True when this exchange was written to chat_messages, which only "

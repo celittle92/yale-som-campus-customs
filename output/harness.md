@@ -30,6 +30,7 @@ get price and stock answers that come from the supplied database rather than fro
 - [Problem 4: Accounts and login](#problem-4-accounts-and-login)
 - [Problem 5: The PydanticAI agent](#problem-5-the-pydanticai-agent)
 - [Problem 6: Tools for product info and stock](#problem-6-tools-for-product-info-and-stock)
+- [Problem 7: Chat search that updates the page](#problem-7-chat-search-that-updates-the-page)
 
 ---
 
@@ -998,6 +999,118 @@ reported the default while the agent used something else. It now goes through
 **The biggest remaining cost lever** is the instructions file: ~2,000 tokens, paid twice
 per question. Trimming it is the highest-leverage saving available — though not the safety
 section, which is the part holding up under probing.
+
+---
+
+## Problem 7: Chat search that updates the page
+
+The chat panel already rendered product cards. This problem takes the same matches out of
+the panel and onto the shop itself.
+
+### How a search result reaches the page
+
+```text
+shopper types "what hoodies do you have?"
+        │
+        ▼
+POST /api/chat                      agent picks browse_category, reads SQLite
+        │                                   │
+        │                           ChatAnswer { reply, product_ids[], product_match_label }
+        ▼                                   │
+backend resolves each id against catalogue ─┘
+        │
+        ▼
+ChatReply { reply, products[ProductCard], match_label, saved }   ← the API contract
+        │
+        ├──► ChatPanel renders the reply, and a small card per product
+        │
+        └──► setResults({label, products, question})   ← shared store in ChatContext
+                     │
+                     ▼
+             Products page renders a results section of full <ProductCard>s
+                     │
+                     ▼
+             click a card → /products/{id} → the Problem 3 detail view
+```
+
+**The contract is `ChatReply`**, defined once in
+[`../backend/models.py`](../backend/models.py):
+
+| Field | What it is |
+|---|---|
+| `reply` | The assistant's words |
+| `products` | **Whole catalogue rows**, resolved by the backend from the agent's ids |
+| `match_label` | Short heading for the set, e.g. "Fleece jackets". Null when empty |
+| `saved` | Whether the exchange was written to `chat_messages` |
+
+`products` carries resolved rows rather than ids so the front end renders cards without a
+second request — and, more importantly, so a price on the page can only have come from the
+database. The agent never sends product data; it sends ids, and the backend decides what
+those mean.
+
+`match_label` is new in this problem. It exists because the page needs a heading, and the
+agent is the only thing that knows what the set *is*: "Hoodies" is a better heading than
+"6 results". The instructions constrain it to a two-or-three-word noun phrase with no
+count, since the page adds the count itself.
+
+### Front-end plumbing
+
+- **`ChatContext` gained a results store** — `{label, products, question}` plus
+  `setResults`. One shared place, so the panel can publish and any page can read.
+- **`ChatPanel` publishes** on every answer that carries products.
+- **The Products page renders them** in a highlighted section above the full grid, headed
+  with `match_label`, subtitled with the shopper's own question, and with "Back to chat"
+  and "Clear" controls. The full catalogue below is relabelled "Everything else" while
+  results are showing.
+- **The shopper is taken to the page automatically** when the agent returns **more than
+  one** product. A single product usually means a follow-up about something they are
+  already reading — navigating away from that would be rude — so one product stays in the
+  panel only. The rule also never fires while on a product detail page.
+
+### The single-item page still works — by construction, not by luck
+
+The results section renders the **same `ProductCard` component** as the main grid. There is
+no second card implementation to drift, so a card the chat put on the page is the same
+object as a card the catalogue put there: same link, same hover, same target.
+
+Verified by clicking one: a chat-placed card for the Benjamin Franklin Fleece Jacket opened
+`/products/benjamin-franklin-fleece-jacket` with the large image on the left loaded at
+685×685, `$98.00`, the colours section, and six size buttons with four selectable. That is
+the Problem 3 detail view intact.
+
+### A duplication bug found while doing this
+
+`ChatReply` was defined **twice** — once in `models.py` and once in `main.py` — and adding
+`match_label` to one of them made the drift visible when the tests failed. Worse,
+`models.py` defined `SizeStock` twice, the second silently shadowing the first.
+
+All seventeen types now live in `models.py`, which is where the assignment says they
+belong, and `main.py` defines none at all — it imports them. The auth request models moved
+across too. This is the kind of thing that stays invisible until two copies disagree and
+something downstream is quietly wrong.
+
+### Verification
+
+Offline: 47 checks in `tests/test_agent.py` and 19 in `tests/test_auth.py`, all passing.
+Front end type-checks and builds clean.
+
+Live, two exchanges:
+
+| Check | Result |
+|---|---|
+| "what hoodies do you have?" from the Home page | Results store populated; Products page section headed **"Hoodies"**, subtitle *6 matches for "what hoodies do you have?"*, 6 cards |
+| "do you sell any fleece jackets?" from the Home page | **Auto-navigated** `/` → `/products` after 5s, headed **"Fleece jackets"**, 6 cards — which is exactly how many fleece jackets the catalogue holds |
+| Click a chat-placed card | Opens the full Problem 3 detail view: 685×685 image left, `$98.00`, colours, 6 size buttons, 4 selectable |
+| `match_label` on the API | `"Navy crewneck"` returned for "show me navy crewnecks" |
+
+**A measurement mistake worth recording.** The first live attempt looked like a failure —
+no navigation after a 12-second wait. It was not. The first request after a backend
+restart is slower, because the agent and its HTTP client are built on demand, so the reply
+simply had not landed inside the window. Re-run with polling instead of a fixed wait, it
+navigated in 5 seconds. A fixed `setTimeout` in a test is a guess about timing, and this
+one guessed wrong and nearly sent me debugging working code.
+
+**Cost:** two billed exchanges, bringing HW4 to eleven.
 - Sessions do not survive a backend restart, and there is no expiry or "log out everywhere".
 - There is no password reset and no email verification. Neither is asked for by the
   assignment; both would matter in production.

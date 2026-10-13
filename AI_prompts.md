@@ -559,6 +559,45 @@ the catalogue. Cost: two billed exchanges.
 
 ---
 
+## Problem 7: Chat search that updates the page
+
+### Prompt
+
+> Problem 7: Chat search that updates the page
+>
+> We need to add a feature to the site. When a customer asks about a type of item, such as 'what hoodies' do you have?' - the agent should search the catalogue and the website should dynamically show those matching items as product cards including image, name, price, and short info. I feel like our chat bot already does this but lets see if we can get the website to as well.
+>
+> The is an API contract - the agent returns structured product matches and then the frontend renders them on the site. It should be cool!
+>
+> After the dynamic product cards re loaded by this feature, make sure the SINGLE ITEM PAGE BEHAVIOR FROM PROBLEM 3 STILL WORKS. Each product card - including the ones chat put on the page - should still open that large detail view including the image, and full information when clicked.
+>
+> once this is done, update prompts/prompt.md and output/harness.md so it is clear how the search results reach the page
+
+Right that the chat panel already did this; the work was getting the matches onto the shop
+itself. Added `match_label` to the `ChatReply` contract so the page has a real heading,
+gave [`frontend/src/ChatContext.tsx`](frontend/src/ChatContext.tsx) a shared results store,
+and had the Products page render a results section above the full grid. The shopper is
+taken there automatically when the agent returns more than one product, but not for a
+single one — that usually means a follow-up about something they are already reading.
+
+The single-item page still works because the results section renders the **same**
+`ProductCard` component as the main grid, so there is no second implementation to drift.
+Verified by clicking a chat-placed card: it opened the full Problem 3 detail view with the
+685×685 image on the left, `$98.00`, colours, and six size buttons.
+
+Found and fixed a real bug on the way: `ChatReply` was defined twice, in both `models.py`
+and `main.py`, and `models.py` defined `SizeStock` twice with the second silently shadowing
+the first. All seventeen types now live in `models.py` and `main.py` defines none.
+
+Also worth recording a mistake of mine: the first live test looked like a failure because I
+waited a fixed 12 seconds and nothing had navigated. The first request after a backend
+restart is slower, since the agent is built on demand. Re-run with polling, it navigated in
+5 seconds. Full write-up in
+[`output/harness.md`](output/harness.md#problem-7-chat-search-that-updates-the-page).
+Cost: two billed exchanges.
+
+---
+
 <!--
 Template for the next problem. Copy below this line and replace N and the bracketed text.
 
