@@ -117,7 +117,7 @@
 
   <div class="meta">
     <dl>
-      <dt>Captured</dt><dd>13 October 2026, 7:03 pm (America/New_York)</dd>
+      <dt>Captured</dt><dd>13 October 2026, 7:55 pm (America/New_York)</dd>
       <dt>Front end</dt><dd>React + Vite dev server, <code>http://localhost:5174</code></dd>
       <dt>Back end</dt><dd>FastAPI, <code>uvicorn main:app --port 8000</code>, from <code>backend/</code></dd>
       <dt>Agent</dt><dd>PydanticAI over <code>gpt-5.6-luna</code> via Portkey</dd>
@@ -308,7 +308,11 @@
       <li>Every figure was then checked against <code>campus_customs.db</code> with a
           read-only SQLite query. The database itself is not committed, as the assignment
           requires.</li>
-      <li>Two live model calls were made in total, one per chat check.</li>
+      <li>Two live model calls per run, one per chat check. The run was repeated once —
+          the first pass put a flaw in the product photography on screen at full size
+          (background trapped between a sleeve and the torso stayed black), so that was
+          fixed and every screenshot re-taken against the corrected images. Both runs
+          returned the same answers, word for word.</li>
     </ul>
   </footer>
 

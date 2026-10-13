@@ -821,6 +821,28 @@ recorded colours.
    interior white can never seed it. Re-measured at zero change inside the garment, and
    confirmed visually on the Crew Left Chest Hoodie she screenshotted.
 
+3. **What was lacking:** the photo cleanup still left black wedges where a garment
+   enclosed part of the backdrop. Raised after the Problem 11 screenshots put it on
+   screen at full size.
+
+   > I noticed that too. Let's fix it.
+
+   A flood fill spreads in from the corners, so it only finds background connected to an
+   edge. A crewneck with its sleeves away from its body walls off a wedge of the backdrop,
+   and that wedge stayed black — on the navy crewnecks it looked like holes cut out of the
+   garment.
+
+   Those regions are now matched by colour and then had everything the corner fill already
+   reached subtracted, leaving exactly what it could not get to. The tolerance is 12 rather
+   than the 30 used outside, because nothing vouches for these pixels but their own colour.
+   Calibrated on the two cases that disagree: the real sleeve gaps are almost fully covered
+   at 12, while the shadow inside a hood only floods in above 20 — at 30 it would have
+   bleached the hood lining.
+
+   Verified by regenerating all 102 and diffing against the previous version: 26 images
+   changed, 68,667 pixels of trapped background removed, zero changed pixels outside an
+   enclosed gap.
+
 ---
 
 ## Problem 11: Site testing (app check)

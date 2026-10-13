@@ -1307,7 +1307,28 @@ Both screenshots are in the HTML rather than only the flattering one. A filter t
 to do nothing reads as broken unless the grader can also see where it does work, and the
 honest version of that evidence is two pictures, not one.
 
+### The check earned its keep
+
+It found a real defect on the first run. Seeing the storefront at full size made obvious
+something that had been shipping for two days: the photo cleanup left **black wedges where
+a garment encloses part of the backdrop** — the gap between a sleeve and the torso. A flood
+fill spreads inward from the corners, so it only ever reaches background connected to an
+edge, and a wedge walled off by the garment is not. On the navy crewnecks it read as holes
+cut out of the sweatshirt.
+
+Fixed in `backend/images.py` by matching those regions on colour and subtracting everything
+the corner fill already reached, at a much tighter tolerance (12 rather than 30) because
+nothing vouches for those pixels except their own colour. The calibration and the
+verification are in [`design.md`](design.md#product-photography); the short version is 26
+images changed, 68,667 pixels of trapped background removed, and zero changed pixels
+outside an enclosed gap. `IMAGE_PIPELINE_VERSION` went to 6 so browsers fetch the new copies.
+
+Worth recording as the argument for the exercise: the bug was visible on every page of the
+site and nobody had noticed it. Screenshotting the app on purpose is what surfaced it.
+
 ### Cost
 
-Two billed exchanges, one per chat check. The running total stops being exact here: the
-Problem 9 latency measurements were live calls and were not tallied at the time.
+Two billed exchanges per run, one per chat check, and the run was repeated after the image
+fix so the screenshots show the corrected photography — four in total. Both runs returned
+the same answers word for word. The running total stops being exact here: the Problem 9
+latency measurements were live calls and were not tallied at the time.

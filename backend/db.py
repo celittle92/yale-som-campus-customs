@@ -300,7 +300,7 @@ def clear_messages(user_id: int) -> int:
 RECENTLY_VIEWED_LIMIT = 8
 
 # Bump when the image pipeline changes, to invalidate browser caches.
-IMAGE_PIPELINE_VERSION = 5
+IMAGE_PIPELINE_VERSION = 6
 
 
 def ensure_schema() -> None:

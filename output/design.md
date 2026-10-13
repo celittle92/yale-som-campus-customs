@@ -159,6 +159,36 @@ can never seed it. Re-measured: zero change inside the garment.
 The lesson is general: "the background" and "pixels that happen to be white" are not the
 same set, and a product photo is exactly where that difference bites.
 
+**Then the app check in Problem 11 found what both passes had missed.** A flood fill
+spreads inward from the corners, so it only ever finds background that is *connected to
+an edge*. A crewneck photographed with its sleeves away from its body **encloses a wedge
+of the backdrop**, walled off from every corner — and that wedge stayed black. On the navy
+crewnecks it read as holes cut out of the garment. It was on the page the whole time;
+taking the screenshots is what made it obvious.
+
+Those regions are now matched **by colour** rather than by connectivity: everything within
+tolerance of the backdrop, minus everything the corner fill already reached, leaving
+exactly what it could not get to.
+
+**That needs a much tighter tolerance, and the measurement says why.** Nothing vouches for
+these pixels except their own colour — there is no corner to connect them to — so the
+threshold is 12, not the 30 used outside. The two cases that disagree set the bound:
+
+| | sleeve gaps, `soccer-left-chest-crewneck` | hood shadow, `basic-hoodie-big-yale` |
+|---|---|---|
+| at 12 | 0.98% of the frame | 0.12% |
+| at 20 | 1.12% | 0.27% |
+| at 25 | 1.18% | **1.35%** |
+| at 30 | 1.27% | **2.02%** |
+
+The real gaps are nearly all there at 12 and barely grow after it. The hoodie's own shadow
+floods in above 20 — at 30 it would have bleached the inside of the hood. A limit of 12
+takes the first and leaves the second.
+
+**Verified across the whole catalogue**, by regenerating every image and diffing it against
+the previous version: 26 images changed, **68,667 pixels** of trapped background removed,
+and **zero** changed pixels outside an enclosed gap. Nothing on a garment moved.
+
 **The hero is a 2×2 of equal squares.** An earlier version gave one product a
 double-height tile; at that scale it read as a banner rather than a shop, and the crop cut
 the garment. Four products at one size reads as a catalogue.

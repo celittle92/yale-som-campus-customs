@@ -35,7 +35,7 @@ const collections = [
 // Real catalogue photography, so the hero shows what the shop actually sells. The
 // version marker matches the one the API puts on image_url, so a browser holding the
 // old black-background copy fetches the tidied one.
-const IMAGE_VERSION = 5
+const IMAGE_VERSION = 6
 
 
 const heroImages = [
