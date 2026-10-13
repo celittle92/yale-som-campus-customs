@@ -5,6 +5,8 @@ export type Filters = {
   type: string
   color: string
   size: string
+  /** 'college' | 'team' | 'school' — the three ways people actually shop. */
+  theme: string
   inStockOnly: boolean
 }
 
@@ -12,7 +14,14 @@ export const EMPTY_FILTERS: Filters = {
   type: '',
   color: '',
   size: '',
+  theme: '',
   inStockOnly: false,
+}
+
+export const THEME_LABELS: Record<string, string> = {
+  college: 'Residential colleges',
+  team: 'Varsity teams',
+  school: 'Graduate schools',
 }
 
 export const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
@@ -51,6 +60,7 @@ export function applyFilters(
 ): ProductSummary[] {
   return products.filter((product) => {
     if (filters.type && categoryOf(product.garment_type) !== filters.type) return false
+    if (filters.theme && !(product.themes ?? []).includes(filters.theme)) return false
     if (
       filters.color &&
       !product.colors.some((c) => c.toLowerCase() === filters.color.toLowerCase())
@@ -94,7 +104,7 @@ export default function ProductFilter({
   }, [products])
 
   const active =
-    filters.type || filters.color || filters.size || filters.inStockOnly
+    filters.type || filters.color || filters.size || filters.theme || filters.inStockOnly
 
   const select =
     'mt-1 w-full cursor-pointer rounded border border-line bg-paper px-3 py-2 text-sm text-ink'
@@ -112,6 +122,23 @@ export default function ProductFilter({
           {matchCount} of {products.length} styles
         </p>
       </div>
+
+      {filters.theme && (
+        <p className="mt-3 flex flex-wrap items-center gap-2 text-sm text-body">
+          Showing
+          <span className="inline-flex items-center gap-2 rounded-full bg-accent-soft px-3 py-1 text-sm font-semibold text-accent">
+            {THEME_LABELS[filters.theme] ?? filters.theme}
+            <button
+              type="button"
+              aria-label={`Remove the ${THEME_LABELS[filters.theme] ?? filters.theme} filter`}
+              onClick={() => onChange({ ...filters, theme: '' })}
+              className="cursor-pointer text-accent/70 transition-colors hover:text-accent"
+            >
+              ✕
+            </button>
+          </span>
+        </p>
+      )}
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div>

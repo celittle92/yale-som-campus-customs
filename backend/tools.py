@@ -48,6 +48,61 @@ CATEGORY_RULES: list[tuple[str, tuple[str, ...]]] = [
 ]
 
 CATEGORIES = [label for label, _ in CATEGORY_RULES]
+
+# --- Themes: the three ways people actually shop -----------------------------------
+#
+# Residential college, varsity team, graduate school. Derived from `search_tags` so the
+# home page can link straight to "everything for your college" without a second schema.
+#
+# The exclusions matter. "Crew" is a sport, but "crewneck", "crew neck" and "men's
+# crewneck" are a collar — matching naively would file all 29 crewneck sweatshirts under
+# varsity teams.
+THEME_RULES: dict[str, dict[str, tuple[str, ...]]] = {
+    "college": {
+        "include": (
+            "benjamin franklin", "berkeley", "branford", "davenport", "grace hopper",
+            "jonathan edwards", "morse", "pierson", "saybrook", "timothy dwight",
+            "trumbull", "silliman", "ezra stiles", "residential college",
+        ),
+        "exclude": (),
+    },
+    "team": {
+        "include": (
+            "baseball", "football", "hockey", "soccer", "lacrosse", "tennis",
+            "basketball", "swimming", "volleyball", "golf", "track", "rugby",
+            "crew", "rowing",
+        ),
+        "exclude": ("crewneck", "crew neck", "crew-neck"),
+    },
+    "school": {
+        "include": (
+            "school of", "law school", "divinity", "som", "medicine", "nursing",
+            "architecture", "engineering", "public health", "forest school",
+        ),
+        "exclude": (),
+    },
+}
+
+THEME_LABELS = {
+    "college": "Residential colleges",
+    "team": "Varsity teams",
+    "school": "Graduate schools",
+}
+
+
+def themes_for(product) -> list[str]:
+    """Which of the three shopping themes a product belongs to, if any."""
+    haystack = " ".join(
+        [product.name, " ".join(product.search_tags), product.description]
+    ).lower()
+    found: list[str] = []
+    for theme, rules in THEME_RULES.items():
+        cleaned = haystack
+        for term in rules["exclude"]:
+            cleaned = cleaned.replace(term, " ")
+        if any(term in cleaned for term in rules["include"]):
+            found.append(theme)
+    return found
 SIZES = ["XS", "S", "M", "L", "XL", "XXL"]
 MAX_RESULTS = 6
 

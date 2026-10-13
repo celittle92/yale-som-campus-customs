@@ -22,8 +22,14 @@ Fraunces is a variable serif with an optical-size axis, so headings use tighter,
 higher-contrast letterforms at large sizes — the difference between type that was *set*
 and type that was scaled up. Inter handles body copy, labels and UI.
 
-Headings also carry a slight negative letter-spacing and the `SOFT` axis, which keeps a
-big serif from feeling stiff.
+**Optical size is matched to the size the text is actually set at** — `opsz 72` for page
+titles, `32` for section headings, `18` for card titles. The first attempt used the
+display value everywhere, which gave hairline strokes and cramped spacing on smaller
+headings; Christine's words were "hard to read and looks messy", and she was right. An
+optical-size axis is only useful if you actually use it.
+
+Fraunces' `WONK` alternates are switched **off**. The quirky letterforms are charming in
+isolation and harder to read in a paragraph heading. Character is good; legibility wins.
 
 **Why it helps:** a storefront is judged in about a second. Two well-paired typefaces do
 more for "this is a real business" than any amount of decoration, and Inter at 15–18px
@@ -94,6 +100,53 @@ queasy.**
 Sticky, translucent, blurred. Nav links grow an underline from the left on hover and stay
 underlined when active. The account action is a filled pill; secondary actions are
 outlined or plain. **One look per level of importance, used consistently.**
+
+### Every entry point goes somewhere
+
+The home page used to describe categories without letting you shop them. Now every card
+is a link into a filtered product list, and **filters live in the URL** — so a filtered
+view is shareable, survives a reload, and the back button works.
+
+| Card | Goes to | Products |
+|---|---|---|
+| What we carry → Hoodies | `/products?type=Hoodie` | 27 |
+| → Crewneck sweatshirts | `?type=Crewneck sweatshirt` | 29 |
+| → T-shirts, Quarter-zips, Fleece jackets, Jackets | `?type=…` | 25 / 11 / 6 / 2 |
+| Your residential college | `/products?theme=college` | 19 |
+| Your team | `?theme=team` | 29 |
+| Your school | `?theme=school` | 13 |
+
+The count printed on each card is the count you get after clicking — verified for all of
+them. A theme filter shows as a removable chip, so it is obvious why the list is short
+and one click undoes it.
+
+The three themes come from `search_tags`, with one exclusion that matters: **"Crew" is a
+sport, but "crewneck" is a collar.** Matching naively would have filed all 29 crewneck
+sweatshirts under varsity teams.
+
+**Why it helps:** the cards already looked clickable — they lifted on hover. A thing that
+looks like a link and isn't one is worse than a plain paragraph. Now the three ways people
+actually shop for Yale gear are each one click from the front page.
+
+### Product photography
+
+The supplied photos were inconsistent: **74 of 102 garments sit on pure black, 28 on
+white.** Side by side in a grid that reads as a mistake and pulls the eye off the product.
+
+All of them are now composited onto white. The background is flood-filled from the
+image's four corners, so a garment in the middle of the frame is never touched however
+dark it is.
+
+**The tolerance was calibrated, not guessed.** On the navy-hoodie-on-black shot, fill
+tolerances from 10 to 55 all leave the same 51% of the frame as garment; at 70 it drops
+to 47.6%, the fill escaping through a dark shadow and eating part of a sleeve. The first
+version used 70 and did visibly bite the hoodie. It now runs at 30, and every image gets
+a second, timid pass at 12 — if the two disagree about how much survived, the generous
+fill leaked and the timid result is used instead.
+
+**The supplied images are never modified.** Originals are read-only; results are cached in
+a gitignored directory, and image URLs carry a version marker so a browser holding the old
+black-background copy fetches the new one.
 
 ## One content fix worth recording
 

@@ -6,6 +6,8 @@ export type ProductSummary = {
   colors: string[]
   price: number
   image_url: string
+  /** Shopping themes this belongs to: college, team, school. */
+  themes?: string[]
 }
 
 export type SizeStock = {

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import ProductCard from '../components/ProductCard'
 import ProductFilter, {
   applyFilters,
@@ -24,7 +25,31 @@ import type { ProductSummary } from '../types'
 export default function Products() {
   const [products, setProducts] = useState<ProductSummary[] | null>(null)
   const [stock, setStock] = useState<Record<string, Record<string, number>>>({})
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
+  // Filters live in the URL, so "what we carry" on the home page can link straight to
+  // a filtered list, and so a filtered view is shareable and survives a reload.
+  const [params, setParams] = useSearchParams()
+  const filters: Filters = useMemo(
+    () => ({
+      type: params.get('type') ?? '',
+      color: params.get('color') ?? '',
+      size: params.get('size') ?? '',
+      theme: params.get('theme') ?? '',
+      inStockOnly: params.get('inStock') === '1',
+    }),
+    [params],
+  )
+  const setFilters = useCallback(
+    (next: Filters) => {
+      const update = new URLSearchParams()
+      if (next.type) update.set('type', next.type)
+      if (next.color) update.set('color', next.color)
+      if (next.size) update.set('size', next.size)
+      if (next.theme) update.set('theme', next.theme)
+      if (next.inStockOnly) update.set('inStock', '1')
+      setParams(update, { replace: true })
+    },
+    [setParams],
+  )
   const [recent, setRecent] = useState<ProductSummary[]>([])
   const [error, setError] = useState<string | null>(null)
   const { results, setResults, openPanel } = useChat()
@@ -65,7 +90,8 @@ export default function Products() {
   )
 
   const filtering =
-    !!filters.type || !!filters.color || !!filters.size || filters.inStockOnly
+    !!filters.type || !!filters.color || !!filters.size || !!filters.theme ||
+    filters.inStockOnly
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-12">

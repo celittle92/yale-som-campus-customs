@@ -57,11 +57,27 @@
     font-family: var(--font-sans);
   }
 
-  /* Fraunces' optical-size axis: tighter, higher-contrast letterforms at display
-     sizes, which is what makes a heading look set rather than scaled up. */
-  h1, h2, h3 {
-    font-variation-settings: 'opsz' 96, 'SOFT' 20;
+  /* Fraunces' optical-size axis has to match the size the text is actually set at.
+     A display value on a small heading gives hairline strokes and cramped spacing —
+     it reads as messy. So each tier gets the opsz it is drawn for, and the quirky
+     alternates (WONK) are off: character is nice, legibility matters more. */
+  h1, h2, h3, h4 {
+    font-variation-settings: 'SOFT' 0, 'WONK' 0;
+  }
+
+  h1 {
+    font-variation-settings: 'opsz' 72, 'SOFT' 0, 'WONK' 0;
     letter-spacing: -0.015em;
+  }
+
+  h2 {
+    font-variation-settings: 'opsz' 32, 'SOFT' 0, 'WONK' 0;
+    letter-spacing: -0.005em;
+  }
+
+  h3, h4 {
+    font-variation-settings: 'opsz' 18, 'SOFT' 0, 'WONK' 0;
+    letter-spacing: 0;
   }
 
   /* One visible focus ring everywhere, so the whole site is keyboard-navigable. */

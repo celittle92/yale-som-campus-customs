@@ -108,8 +108,10 @@ class Product:
             colors=_loads(row["colors"]),
             search_tags=_loads(row["search_tags"]),
             price=float(row["price"]),
-            # Served by this backend rather than as a raw filesystem path.
-            image_url=f"/api/products/{row['product_id']}/image",
+            # Served by this backend rather than as a raw filesystem path. The version
+            # marker changes when the image pipeline changes, so a browser holding the
+            # old black-background copy fetches the new one instead of reusing it.
+            image_url=f"/api/products/{row['product_id']}/image?v={IMAGE_PIPELINE_VERSION}",
         )
 
 
@@ -296,6 +298,9 @@ def clear_messages(user_id: int) -> int:
 # in their own browser (see output/usability.md).
 
 RECENTLY_VIEWED_LIMIT = 8
+
+# Bump when the image pipeline changes, to invalidate browser caches.
+IMAGE_PIPELINE_VERSION = 3
 
 
 def ensure_schema() -> None:

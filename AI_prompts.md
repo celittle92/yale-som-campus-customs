@@ -772,6 +772,37 @@ is now replaced with an honest line, and the agent is told the description is mi
 it does not describe what it cannot see. Those are the same three products with no
 recorded colours.
 
+### Follow-up prompts
+
+1. **What was lacking:** the home page cards hovered like links but were not links, the
+   product photography had inconsistent backgrounds, and the display font was unreadable
+   at heading sizes.
+
+   > you know what would be cool? if for the 'what we carry' if it linked to that product type (basically the filter)
+   >
+   > And the same thing for the 'find the one that is actually yours' - the residential college, team (sports), and school should also directly link to the products in that category especially since the way these work on the site now, they hover like a link.
+   >
+   > Also, i know these are the images we were given but they look kind of ugly LOL is there any way we can clean them up so they are just images on a clear background that then showcases white behind the image? [...] it kind of drives me nuts how the hoodie and zip jacket are on black but the The Game shirt is on white...
+   >
+   > i also hate the font used for 'about campus customs' - it is hard to read and looks messy
+
+   All three fixed. Filters now live in the URL, so every home-page card links into a
+   filtered list and the view is shareable; the count printed on each card matches the
+   count after clicking, verified for all nine. Three themes (college, team, school) are
+   derived from `search_tags`, with "crewneck" excluded from the sports match so 29
+   crewneck sweatshirts are not filed under varsity teams.
+
+   74 of 102 photos were on black and 28 on white; all are now composited onto white by
+   flood-filling from the corners. The tolerance was calibrated rather than guessed — the
+   first attempt at 70 visibly bit a chunk out of the navy hoodie, and measurement showed
+   10–55 all stable at 51% garment with the leak starting above 55. It now runs at 30
+   with a second timid pass that detects leaks on any image. Originals are never modified.
+
+   The font problem was mine: I had set Fraunces' optical-size axis to a display value at
+   every heading size, which gives hairline strokes and cramped spacing on small
+   headings. Each tier now uses the optical size it is drawn for, and the quirky `WONK`
+   alternates are off.
+
 ---
 
 <!--

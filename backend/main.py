@@ -29,6 +29,7 @@ from models import (
     ShopperContext,
     SignupRequest,
 )
+from images import normalise
 from db import (
     EmailAlreadyRegistered,
     all_stock,
@@ -48,7 +49,7 @@ from db import (
     save_exchange,
     stored_messages,
 )
-from tools import similar_products
+from tools import THEME_LABELS, similar_products, themes_for
 
 logger = logging.getLogger("campus_customs")
 
@@ -113,8 +114,11 @@ def health() -> dict[str, object]:
 @app.get("/api/products", response_model=list[ProductSummary])
 def products() -> list[dict]:
     return [
-        {k: v for k, v in asdict(p).items()
-         if k not in ("search_tags", "has_written_description")}
+        {
+            **{k: v for k, v in asdict(p).items()
+               if k not in ("search_tags", "has_written_description")},
+            "themes": themes_for(p),
+        }
         for p in list_products()
     ]
 
@@ -140,7 +144,9 @@ def product_image(product_id: str) -> FileResponse:
     path = image_path(product_id)
     if path is None:
         raise HTTPException(status_code=404, detail="No image for that product")
-    return FileResponse(path, media_type="image/jpeg")
+    # Serve the white-background version so the grid is visually consistent. The
+    # supplied file is only ever read; the tidied copy lives in a cache directory.
+    return FileResponse(normalise(path, product_id), media_type="image/jpeg")
 
 
 @app.post("/api/auth/signup", response_model=PublicUser, status_code=201)

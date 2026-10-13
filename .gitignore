@@ -22,6 +22,9 @@ node_modules/
 __pycache__/
 *.py[cod]
 
+# Generated, white-background copies of the product photos
+.image-cache/
+
 # Build output
 dist/
 build/

@@ -1,29 +1,43 @@
 import { Link } from 'react-router-dom'
 
+// Each card links into the Products filter. `type` matches the canonical categories the
+// backend uses, so the count shown here and the count after the click always agree.
 const categories = [
-  { label: 'Crewneck sweatshirts', note: 'The one you reach for in October.', count: 29 },
-  { label: 'Hoodies', note: 'Pullover and full-zip, light to heavyweight.', count: 27 },
-  { label: 'T-shirts', note: 'Short sleeve, including The Game designs.', count: 25 },
-  { label: 'Quarter-zips', note: 'The closest thing to business casual.', count: 11 },
-  { label: 'Fleece and jackets', note: 'For when New Haven turns on you.', count: 8 },
+  { label: 'Crewneck sweatshirts', type: 'Crewneck sweatshirt', note: 'The one you reach for in October.', count: 29 },
+  { label: 'Hoodies', type: 'Hoodie', note: 'Pullover and full-zip, light to heavyweight.', count: 27 },
+  { label: 'T-shirts', type: 'T-shirt', note: 'Short sleeve, including The Game designs.', count: 25 },
+  { label: 'Quarter-zips', type: 'Quarter-zip', note: 'The closest thing to business casual.', count: 11 },
+  { label: 'Fleece jackets', type: 'Fleece jacket', note: 'For when New Haven turns on you.', count: 6 },
+  { label: 'Jackets', type: 'Jacket', note: 'Bomber and full-zip, for the walk over.', count: 2 },
 ]
 
 const collections = [
   {
     title: 'Your residential college',
+    theme: 'college',
+    count: 19,
     body: 'Benjamin Franklin, Berkeley, Branford, Davenport, Grace Hopper, Jonathan Edwards, Morse, Pierson, Saybrook, Timothy Dwight and more.',
   },
   {
     title: 'Your team',
+    theme: 'team',
+    count: 29,
     body: 'Baseball, football, hockey, soccer, lacrosse, crew, tennis and field hockey, mostly as left-chest logos.',
   },
   {
     title: 'Your school',
+    theme: 'school',
+    count: 13,
     body: 'Law, Medicine, Management, Nursing, Divinity, Architecture, Art, Music, Engineering and Public Health.',
   },
 ]
 
-// Real catalogue photography, so the hero shows what the shop actually sells.
+// Real catalogue photography, so the hero shows what the shop actually sells. The
+// version marker matches the one the API puts on image_url, so a browser holding the
+// old black-background copy fetches the tidied one.
+const IMAGE_VERSION = 3
+
+
 const heroImages = [
   { id: 'basic-hoodie-big-yale', label: 'Basic Hoodie Big Yale' },
   { id: '2025-yale-vs-harvard-t-shirt', label: '2025 Yale vs Harvard T-Shirt' },
@@ -75,7 +89,7 @@ export default function Home() {
             className="group relative col-span-1 row-span-2 overflow-hidden rounded-2xl border border-line bg-sand shadow-card transition-all duration-500 hover:-translate-y-1 hover:shadow-lift"
           >
             <img
-              src={`/api/products/${heroImages[0].id}/image`}
+              src={`/api/products/${heroImages[0].id}/image?v=${IMAGE_VERSION}`}
               alt={heroImages[0].label}
               className="h-full w-full object-cover object-top transition-transform duration-700 ease-[var(--ease-out-soft)] group-hover:scale-105"
             />
@@ -88,7 +102,7 @@ export default function Home() {
               style={{ marginTop: i === 0 ? '1.25rem' : undefined }}
             >
               <img
-                src={`/api/products/${item.id}/image`}
+                src={`/api/products/${item.id}/image?v=${IMAGE_VERSION}`}
                 alt={item.label}
                 className="aspect-square h-full w-full object-cover transition-transform duration-700 ease-[var(--ease-out-soft)] group-hover:scale-105"
               />
@@ -118,20 +132,29 @@ export default function Home() {
         </h2>
         <ul className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {categories.map((category, i) => (
-            <li
-              key={category.label}
-              className="animate-rise group rounded-xl border border-line bg-paper p-6 transition-all duration-300 hover:-translate-y-0.5 hover:border-accent/30 hover:shadow-card"
-              style={{ animationDelay: `${i * 60}ms` }}
-            >
-              <div className="flex items-baseline justify-between gap-3">
-                <h3 className="font-display text-lg font-semibold text-ink">
-                  {category.label}
-                </h3>
-                <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent">
-                  {category.count}
+            <li key={category.label} className="animate-rise" style={{ animationDelay: `${i * 60}ms` }}>
+              <Link
+                to={`/products?type=${encodeURIComponent(category.type)}`}
+                className="group flex h-full flex-col rounded-xl border border-line bg-paper p-6 transition-all duration-300 hover:-translate-y-0.5 hover:border-accent/30 hover:shadow-card"
+              >
+                <div className="flex items-baseline justify-between gap-3">
+                  <h3 className="font-display text-lg font-semibold text-ink">
+                    {category.label}
+                  </h3>
+                  <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent">
+                    {category.count}
+                  </span>
+                </div>
+                <p className="mt-2 flex-1 text-sm leading-relaxed text-body">
+                  {category.note}
+                </p>
+                <span className="mt-4 text-sm font-semibold text-accent">
+                  Shop {category.label.toLowerCase()}
+                  <span className="ml-1 inline-block transition-transform duration-300 group-hover:translate-x-1">
+                    →
+                  </span>
                 </span>
-              </div>
-              <p className="mt-2 text-sm leading-relaxed text-body">{category.note}</p>
+              </Link>
             </li>
           ))}
         </ul>
@@ -147,20 +170,34 @@ export default function Home() {
         </p>
         <div className="mt-7 grid gap-5 md:grid-cols-3">
           {collections.map((collection, i) => (
-            <article
+            <Link
               key={collection.title}
-              className="animate-rise relative overflow-hidden rounded-xl border border-line bg-paper p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card"
+              to={`/products?theme=${collection.theme}`}
+              className="animate-rise group relative flex flex-col overflow-hidden rounded-xl border border-line bg-paper p-6 transition-all duration-300 hover:-translate-y-0.5 hover:border-accent/30 hover:shadow-card"
               style={{ animationDelay: `${i * 80}ms` }}
             >
               <span
                 aria-hidden="true"
-                className="absolute top-0 left-0 h-full w-1 bg-accent/80"
+                className="absolute top-0 left-0 h-full w-1 bg-accent/80 transition-all duration-300 group-hover:w-1.5"
               />
-              <h3 className="font-display text-lg font-semibold text-ink">
-                {collection.title}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-body">{collection.body}</p>
-            </article>
+              <div className="flex items-baseline justify-between gap-3">
+                <h3 className="font-display text-lg font-semibold text-ink">
+                  {collection.title}
+                </h3>
+                <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent">
+                  {collection.count}
+                </span>
+              </div>
+              <p className="mt-2 flex-1 text-sm leading-relaxed text-body">
+                {collection.body}
+              </p>
+              <span className="mt-4 text-sm font-semibold text-accent">
+                Shop these
+                <span className="ml-1 inline-block transition-transform duration-300 group-hover:translate-x-1">
+                  →
+                </span>
+              </span>
+            </Link>
           ))}
         </div>
       </section>

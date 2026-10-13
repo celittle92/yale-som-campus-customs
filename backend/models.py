@@ -161,6 +161,12 @@ class LookupError(BaseModel):
 class ProductSummary(ProductCard):
     """A product as `/api/products` returns it."""
 
+    themes: list[str] = Field(
+        default_factory=list,
+        description="Which shopping themes this belongs to: college, team, school. "
+        "Lets the home page link straight into a filtered list.",
+    )
+
 
 class ProductDetail(ProductCard):
     """A product as `/api/products/{id}` returns it: catalogue plus stock."""
