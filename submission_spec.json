@@ -36,6 +36,8 @@
     "frontend/src/components/ProductRow.tsx",
     "frontend/src/recentlyViewed.ts",
     "output/usability.md",
+    "frontend/src/validation.ts",
+    "frontend/src/components/Field.tsx",
     "requirements.txt",
     ".env.example",
     ".gitignore",

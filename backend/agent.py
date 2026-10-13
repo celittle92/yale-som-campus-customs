@@ -10,14 +10,16 @@ read server-side and never leaves this process.
 from __future__ import annotations
 
 import os
+import re
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent, ModelRetry, RunContext
 from pydantic_ai.models.openai import OpenAIResponsesModel, OpenAIResponsesModelSettings
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from app_config import DEFAULT_OPENAI_MODEL, build_portkey_client, load_settings
+from db import get_product, list_products
 from models import ChatAnswer, ShopperContext
 from tools import (
     browse_category,
@@ -59,6 +61,12 @@ LATENCY_SETTINGS = OpenAIResponsesModelSettings(
 )
 
 
+@lru_cache(maxsize=1)
+def known_prices() -> frozenset[float]:
+    """Every price the shop charges. The catalogue has seven; anything else is wrong."""
+    return frozenset(p.price for p in list_products())
+
+
 def load_prompt() -> str:
     """Read the system prompt from disk. Not cached, so editing the file during
     development takes effect on the next request rather than needing a restart."""
@@ -80,6 +88,44 @@ def create_agent(model) -> Agent[ShopperContext, ChatAnswer]:
         retries=2,
         model_settings=LATENCY_SETTINGS,
     )
+
+    @agent.output_validator
+    def grounded_in_the_catalogue(answer: ChatAnswer) -> ChatAnswer:
+        """Machine-check the answer against the database before the shopper sees it.
+
+        The instructions tell the agent to read every fact from a tool. This enforces it
+        rather than trusting it: if the answer fails, `ModelRetry` sends it back to fix
+        its own mistake, with the reason. Nothing unverified reaches the page.
+
+        Two checks, both cheap and high-precision:
+
+        1. **Every product id must exist.** An invented id would otherwise be silently
+           dropped, leaving a reply that talks about a product with no card beside it.
+        2. **Every price quoted with cents must be a real catalogue price.** The
+           catalogue has exactly seven price points, so `$71.00` is provably wrong. Only
+           amounts written with cents are checked, because the instructions require
+           quoted prices to carry them while ranges ("under $50") do not — so a bound a
+           shopper asked about is never mistaken for a claimed price.
+        """
+        unknown = [pid for pid in answer.product_ids if get_product(pid) is None]
+        if unknown:
+            raise ModelRetry(
+                f"These product ids do not exist: {', '.join(unknown)}. "
+                "Use only ids returned by a tool in this conversation, and call a tool "
+                "again if you need them."
+            )
+
+        real_prices = {f"{p:.2f}" for p in known_prices()}
+        quoted = set(re.findall(r"\$(\d+\.\d{2})", answer.reply))
+        invented = sorted(quoted - real_prices)
+        if invented:
+            raise ModelRetry(
+                f"You quoted {', '.join('$' + p for p in invented)}, which is not a "
+                "price this shop charges. Call get_product_details and quote the "
+                "price_usd it returns."
+            )
+
+        return answer
 
     @agent.instructions
     def shopper_context(ctx: RunContext[ShopperContext]) -> str:

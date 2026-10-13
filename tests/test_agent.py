@@ -180,6 +180,31 @@ check("instructions mention the context", "product_match_label" in load_prompt()
 check("the instructions tell the agent the context exists",
       "Who you are talking to, and where they are" in load_prompt())
 
+print("\nOutput validator: answers are checked against the catalogue")
+from pydantic_ai import ModelRetry  # noqa: E402
+validator = create_agent(TestModel())._output_validators[0].function
+
+def rejects(answer) -> bool:
+    try:
+        validator(answer)
+        return False
+    except ModelRetry:
+        return True
+
+check("an invented product id is sent back for correction",
+      rejects(ChatAnswer(reply="Here you go.", product_ids=["not-a-real-product"])))
+check("a price the shop does not charge is sent back",
+      rejects(ChatAnswer(reply="That one is $71.00.", product_ids=[])))
+check("a real price is accepted",
+      not rejects(ChatAnswer(reply="That one is $68.00.", product_ids=[])))
+check("a price range is NOT mistaken for a quoted price",
+      not rejects(ChatAnswer(reply="We have plenty under $50.", product_ids=[])))
+check("a real id with a real price is accepted",
+      not rejects(ChatAnswer(reply="The hoodie is $68.00.", product_ids=["basic-hoodie-big-yale"])))
+check("every catalogue price passes the check",
+      all(not rejects(ChatAnswer(reply=f"It is ${p:.2f}.", product_ids=[]))
+          for p in [32.0, 45.0, 58.0, 68.0, 72.0, 88.0, 98.0]))
+
 print("\nResponse shapes")
 card = ProductCard(
     product_id="x", name="X", garment_type="hoodie", description="d",

@@ -1,22 +1,31 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import Field from '../components/Field'
 import { useAuth } from '../AuthContext'
+import { emailError } from '../validation'
 
 export default function LogIn() {
   const { user, logIn, logOut } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [touched, setTouched] = useState({ email: false, password: false })
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
+  // Checked as they type, so a missing @ is caught before they ever press the button.
+  const emailProblem = emailError(email, touched.email)
+  const passwordProblem = !password && touched.password ? 'Enter your password.' : null
+  const canSubmit = !!email && !!password && !emailProblem && !busy
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
+    setTouched({ email: true, password: true })
+    if (!email || !password || emailError(email, true)) return
     setError(null)
     setBusy(true)
     try {
       await logIn(email, password)
-      // Nothing keeps the typed password around after this point.
       setPassword('')
       navigate('/products')
     } catch (caught) {
@@ -29,9 +38,7 @@ export default function LogIn() {
   if (user) {
     return (
       <div className="mx-auto max-w-md px-5 py-12">
-        <h1 className="font-display text-3xl font-bold text-ink">
-          You are logged in
-        </h1>
+        <h1 className="font-display text-3xl font-bold text-ink">You are logged in</h1>
         <p className="mt-3 text-body">
           Signed in as <span className="font-semibold">{user.name}</span> ({user.email}).
           Your chat with the shop assistant is saved to this account.
@@ -65,42 +72,32 @@ export default function LogIn() {
           </p>
         )}
 
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-ink">
-            Email
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@yale.edu"
-            className="mt-1 w-full rounded border border-line bg-paper px-3 py-2 text-ink"
-          />
-        </div>
+        <Field
+          id="email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@yale.edu"
+          value={email}
+          error={emailProblem}
+          onChange={(e) => setEmail(e.target.value)}
+          onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+        />
 
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-ink">
-            Password
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            required
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="mt-1 w-full rounded border border-line bg-paper px-3 py-2 text-ink"
-          />
-        </div>
+        <Field
+          id="password"
+          label="Password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          error={passwordProblem}
+          onChange={(e) => setPassword(e.target.value)}
+          onBlur={() => setTouched((t) => ({ ...t, password: true }))}
+        />
 
         <button
           type="submit"
-          disabled={busy || !email || !password}
+          disabled={!canSubmit}
           className="w-full cursor-pointer rounded bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-ink disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy ? 'Checking…' : 'Log in'}

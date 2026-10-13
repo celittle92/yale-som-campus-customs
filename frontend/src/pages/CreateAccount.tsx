@@ -1,8 +1,14 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import Field from '../components/Field'
 import { useAuth } from '../AuthContext'
-
-const MIN_PASSWORD = 8
+import {
+  confirmError,
+  emailError,
+  MIN_PASSWORD,
+  passwordError,
+  requiredError,
+} from '../validation'
 
 export default function CreateAccount() {
   const { user, signUp } = useAuth()
@@ -14,29 +20,37 @@ export default function CreateAccount() {
     password: '',
     confirm_password: '',
   })
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  function update(field: keyof typeof form) {
-    return (event: React.ChangeEvent<HTMLInputElement>) =>
-      setForm((prev) => ({ ...prev, [field]: event.target.value }))
-  }
+  const update = (field: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((prev) => ({ ...prev, [field]: event.target.value }))
+  const blur = (field: string) => () => setTouched((t) => ({ ...t, [field]: true }))
 
-  const mismatch =
-    form.confirm_password.length > 0 && form.password !== form.confirm_password
-  const tooShort = form.password.length > 0 && form.password.length < MIN_PASSWORD
-  const complete =
-    form.first_name && form.last_name && form.email && form.password && form.confirm_password
+  // Every rule runs on every keystroke, so problems surface while the shopper is still
+  // looking at the field rather than after a round trip to the server.
+  const problems = {
+    first_name: requiredError(form.first_name, 'first name', !!touched.first_name),
+    last_name: requiredError(form.last_name, 'last name', !!touched.last_name),
+    email: emailError(form.email, !!touched.email),
+    password: passwordError(form.password, !!touched.password),
+    confirm_password: confirmError(form.password, form.confirm_password),
+  }
+  const complete = Object.values(form).every((v) => v.trim())
+  const clean = Object.values(problems).every((p) => p === null)
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
+    setTouched({
+      first_name: true,
+      last_name: true,
+      email: true,
+      password: true,
+      confirm_password: true,
+    })
+    if (!complete || !clean) return
     setError(null)
-    // Checked here for a fast, clear message; the backend checks again, because
-    // client-side validation is a courtesy and not a control.
-    if (form.password !== form.confirm_password) {
-      setError('The two passwords do not match.')
-      return
-    }
     setBusy(true)
     try {
       await signUp(form)
@@ -52,9 +66,7 @@ export default function CreateAccount() {
   if (user) {
     return (
       <div className="mx-auto max-w-md px-5 py-12">
-        <h1 className="font-display text-3xl font-bold text-ink">
-          Your account is ready
-        </h1>
+        <h1 className="font-display text-3xl font-bold text-ink">Your account is ready</h1>
         <p className="mt-3 text-body">
           Signed in as <span className="font-semibold">{user.name}</span> ({user.email}).
         </p>
@@ -87,109 +99,66 @@ export default function CreateAccount() {
         )}
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label htmlFor="first-name" className="block text-sm font-medium text-ink">
-              First name
-            </label>
-            <input
-              id="first-name"
-              name="first_name"
-              type="text"
-              required
-              autoComplete="given-name"
-              value={form.first_name}
-              onChange={update('first_name')}
-              className="mt-1 w-full rounded border border-line bg-paper px-3 py-2 text-ink"
-            />
-          </div>
-          <div>
-            <label htmlFor="last-name" className="block text-sm font-medium text-ink">
-              Last name
-            </label>
-            <input
-              id="last-name"
-              name="last_name"
-              type="text"
-              required
-              autoComplete="family-name"
-              value={form.last_name}
-              onChange={update('last_name')}
-              className="mt-1 w-full rounded border border-line bg-paper px-3 py-2 text-ink"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label htmlFor="new-email" className="block text-sm font-medium text-ink">
-            Email
-          </label>
-          <input
-            id="new-email"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            value={form.email}
-            onChange={update('email')}
-            placeholder="you@yale.edu"
-            className="mt-1 w-full rounded border border-line bg-paper px-3 py-2 text-ink"
+          <Field
+            id="first-name"
+            label="First name"
+            type="text"
+            autoComplete="given-name"
+            value={form.first_name}
+            error={problems.first_name}
+            onChange={update('first_name')}
+            onBlur={blur('first_name')}
+          />
+          <Field
+            id="last-name"
+            label="Last name"
+            type="text"
+            autoComplete="family-name"
+            value={form.last_name}
+            error={problems.last_name}
+            onChange={update('last_name')}
+            onBlur={blur('last_name')}
           />
         </div>
 
-        <div>
-          <label htmlFor="new-password" className="block text-sm font-medium text-ink">
-            Password
-          </label>
-          <input
-            id="new-password"
-            name="password"
-            type="password"
-            required
-            minLength={MIN_PASSWORD}
-            autoComplete="new-password"
-            value={form.password}
-            onChange={update('password')}
-            aria-describedby="password-hint"
-            className="mt-1 w-full rounded border border-line bg-paper px-3 py-2 text-ink"
-          />
-          <p
-            id="password-hint"
-            className={tooShort ? 'mt-1 text-xs text-red-700' : 'mt-1 text-xs text-muted'}
-          >
-            At least {MIN_PASSWORD} characters.
-          </p>
-        </div>
+        <Field
+          id="new-email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@yale.edu"
+          value={form.email}
+          error={problems.email}
+          onChange={update('email')}
+          onBlur={blur('email')}
+        />
 
-        <div>
-          <label htmlFor="confirm-password" className="block text-sm font-medium text-ink">
-            Confirm password
-          </label>
-          <input
-            id="confirm-password"
-            name="confirm_password"
-            type="password"
-            required
-            autoComplete="new-password"
-            value={form.confirm_password}
-            onChange={update('confirm_password')}
-            aria-invalid={mismatch}
-            aria-describedby={mismatch ? 'confirm-error' : undefined}
-            className={
-              mismatch
-                ? 'mt-1 w-full rounded border border-red-400 bg-paper px-3 py-2 text-ink'
-                : 'mt-1 w-full rounded border border-line bg-paper px-3 py-2 text-ink'
-            }
-          />
-          {mismatch && (
-            <p id="confirm-error" className="mt-1 text-xs text-red-700">
-              The two passwords do not match.
-            </p>
-          )}
-        </div>
+        <Field
+          id="new-password"
+          label="Password"
+          type="password"
+          autoComplete="new-password"
+          value={form.password}
+          error={problems.password}
+          hint={`At least ${MIN_PASSWORD} characters.`}
+          onChange={update('password')}
+          onBlur={blur('password')}
+        />
+
+        <Field
+          id="confirm-password"
+          label="Confirm password"
+          type="password"
+          autoComplete="new-password"
+          value={form.confirm_password}
+          error={problems.confirm_password}
+          onChange={update('confirm_password')}
+          onBlur={blur('confirm_password')}
+        />
 
         <button
           type="submit"
-          disabled={busy || !complete || mismatch || tooShort}
+          disabled={busy || !complete || !clean}
           className="w-full cursor-pointer rounded bg-accent px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-ink disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy ? 'Creating your account…' : 'Create account'}

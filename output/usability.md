@@ -1,16 +1,25 @@
 # Usability improvements
 
-Four improvements to the Campus Customs site: two on the front end, two in the
+Six improvements to the Campus Customs site: three on the front end, three in the
 backend and agent. Written before the work, and updated with measured results as each
 landed.
 
 ## Contents
 
+**Front end**
+
 1. [Product filter — type, colour, size, and exclude out of stock](#1-product-filter)
 2. [You might also like — similar items on a product page](#2-you-might-also-like)
+5. [Inline error validation on the account forms](#5-inline-error-validation-on-the-account-forms)
+
+**Backend and agent**
+
 3. [Recently viewed](#3-recently-viewed)
 4. [A faster assistant](#4-a-faster-assistant)
-5. [Two judgement calls worth stating](#two-judgement-calls-worth-stating)
+6. [Grounded-output validation](#6-grounded-output-validation)
+
+Then: [where to find each one](#where-to-find-each-one-in-the-running-app) and
+[two judgement calls](#two-judgement-calls-worth-stating).
 
 ---
 
@@ -131,6 +140,87 @@ broken. Several seconds is a long time in a shop. Cutting the wait keeps people 
 conversation instead of closing the panel, and the leaner instructions cut the token cost
 of every single message as a side effect.
 
+**Why this is a usability win and not a corner cut.** Speed was only taken where
+correctness is provably safe, so a better experience never comes at the cost of the site's
+integrity. The optimisation deliberately bypassed the lazy shortcuts — no tool calls were
+removed, no grounding rules relaxed, no validation skipped. Every guardrail is intact: the
+safety section is untouched, the requirement to read every price and stock figure from a
+tool is untouched, and the new output validator (improvement 6) now machine-checks the
+result on top. What was removed was waste — internal reasoning this task does not need,
+and words the instructions did not need to say twice.
+
+---
+
+---
+
+## 5. Inline error validation on the account forms
+
+**What I added.** Both the log-in and create-account forms now validate as you type
+rather than on submit. An email without an `@` is flagged the moment it is recognisably
+wrong, with a specific message rather than a generic "invalid":
+
+| Typed | Shown |
+|---|---|
+| `c` | nothing yet — too early to judge |
+| `chris` | "An email address needs an @ symbol." |
+| `chris@` | "Add the part after the @, such as yale.edu." |
+| `chris@yale.edu` | clears |
+
+The same applies to the rest: a short password counts down ("5 more characters needed"), a
+mismatched confirmation flags immediately, and the submit button stays disabled while
+anything is wrong. Fields turn red, and the message is wired to the input with
+`aria-invalid` and `role="alert"`, so a screen reader announces the problem instead of it
+being a colour only sighted users can see.
+
+One deliberate restraint: nothing complains on the first keystroke. Nobody has typed a
+valid email after one character, and a form that calls you wrong before you have finished
+is worse than one that waits.
+
+**Why it helps.** The old flow was: type, submit, wait for the server, get rejected,
+work out what was wrong, retype. That is four steps and a round trip to learn something
+the browser already knew. Now it is caught in place, before any request is made.
+
+For the business, the account form is the narrowest point in the funnel — someone has
+already decided to sign up, and every avoidable failure there is a lost account. It also
+takes pointless traffic off the backend, since malformed submissions never leave the page.
+
+---
+
+## 6. Grounded-output validation
+
+**What I added.** A programmatic check that runs on every answer *before* it reaches the
+shopper, using PydanticAI's output validator. Two rules:
+
+1. **Every product id must exist in the catalogue.** An invented one previously got
+   dropped silently, which left a reply discussing a product with no card beside it.
+2. **Every price quoted with cents must be a price the shop actually charges.** The
+   catalogue has exactly seven price points, so `$71.00` is provably wrong.
+
+When either fails, the answer is not patched up or discarded — it is handed back to the
+agent with the reason, and it tries again. Only amounts written with cents are checked,
+because the instructions require quoted prices to carry them while ranges do not, so
+"under $50" is never mistaken for a claimed price.
+
+Verified with forced bad answers, no credits spent:
+
+| Answer | Result |
+|---|---|
+| id `not-a-real-product` | sent back for correction |
+| "That one is $71.00." | sent back for correction |
+| "That one is $68.00." | accepted |
+| "We have plenty under $50." | accepted — a range, not a quote |
+| All seven real catalogue prices | all accepted |
+
+**Why it helps.** Up to now, "never invent a price" was an instruction. Instructions are
+followed almost always, which is not the same as always, and the one time it fails is a
+shopper told the wrong price. This makes it a property of the system instead of a
+behaviour of the model: a wrong price cannot reach the page, because code checks it
+against the database first.
+
+For the business that is the difference between a policy and a guarantee. Quoting a price
+you do not honour is the kind of mistake that costs trust, and this one cannot happen
+silently.
+
 ---
 
 ## Where to find each one in the running app
@@ -141,6 +231,8 @@ of every single message as a side effect.
 | You might also like | Bottom of any product page, e.g. `/products/basic-hoodie-big-yale` |
 | Recently viewed | Top of the **Products** page, after opening a product or two |
 | Faster assistant | The chat panel — replies now land in about 3.5s instead of 4.9s |
+| Inline error validation | **Log in** and **Create Account** — type an email without an `@` |
+| Grounded-output validation | Invisible by design: it runs on every chat answer. Evidence in the table above. |
 
 Verified live, signed in as the test account:
 

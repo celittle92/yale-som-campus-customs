@@ -682,6 +682,35 @@ so guests get `localStorage` instead — the feature works and nothing leaves th
 And speed is honestly a usability win rather than an accuracy or safety one, so it was
 bought only in ways that cannot touch correctness.
 
+### Follow-up prompts
+
+1. **What was lacking:** the speed improvement did not obviously meet the stated criterion
+   that backend and agent work should make the output "better, more accurate, safer", and
+   the write-up did not argue the point.
+
+   > Hm, so do you think I could get dinged for the speed enhancement?
+   >
+   > Regardless - lets add how the speed is a usability win because we only added speed where correctness is safe ensuring that UX doesn't break the integrity of the site. Additionally the optimization bypassed lazy shortcuts, and kept grounding rules intact. The guardrails also weren't impacted.
+   >
+   > If you think I'd get dinged - let's make one more agent enhancement then so I don't lose credit.
+   >
+   > I did some research and we could add "Inline Error Validation" to the login form. [...]
+   >
+   > That makes sense re: cookies since I told you don't use them, and i figure if we don't use them for one we can't use them for another? so let's keep that. no cookie.
+
+   Said yes, there is real risk, and flagged that inline validation is a **front-end**
+   improvement — a good feature, but it would not cover the agent criterion she was
+   worried about. Built both: inline validation as improvement 5, and a genuine agent
+   accuracy guard as improvement 6.
+
+   Improvement 6 is a PydanticAI output validator that machine-checks every answer
+   against the catalogue before the shopper sees it: product ids must exist, and any
+   price quoted with cents must be one the shop charges. A failure is handed back to the
+   agent with the reason so it corrects itself. That turns "never invent a price" from an
+   instruction into a property of the system.
+
+   Added the speed framing she asked for, and kept the no-cookie decision.
+
 ---
 
 <!--
