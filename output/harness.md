@@ -31,6 +31,7 @@ get price and stock answers that come from the supplied database rather than fro
 - [Problem 5: The PydanticAI agent](#problem-5-the-pydanticai-agent)
 - [Problem 6: Tools for product info and stock](#problem-6-tools-for-product-info-and-stock)
 - [Problem 7: Chat search that updates the page](#problem-7-chat-search-that-updates-the-page)
+- [Problem 8: Customer memory](#problem-8-customer-memory)
 
 ---
 
@@ -1111,6 +1112,125 @@ navigated in 5 seconds. A fixed `setTimeout` in a test is a guess about timing, 
 one guessed wrong and nearly sent me debugging working code.
 
 **Cost:** two billed exchanges, bringing HW4 to eleven.
+
+---
+
+## Problem 8: Customer memory
+
+Persistence was already built in Problem 5. Auditing against this problem's wording found
+three genuine gaps, all now closed.
+
+| Requirement | Before | Now |
+|---|---|---|
+| Save a signed-in shopper's chat | Done (Problem 5) | Unchanged |
+| **Reload it when they return** | Replayed to the *model* but invisible to the shopper — the panel always opened empty | `GET /api/chat/history`, rendered on sign-in |
+| **The agent knows who is chatting** | Not at all | `ShopperContext` deps: first name, full name, email |
+| **Page context** | Not at all | Resolved server-side from the path |
+| Guests can chat, nothing stored | Done | Re-verified |
+| A shopper can clear their own chat | `clear_messages()` existed but **no endpoint called it** — dead code | `DELETE /api/chat/history` plus a "Clear it" control |
+
+### How the chat history is stored
+
+In the supplied `chat_messages` table, unchanged. Two rows per exchange: the shopper's
+message as `role='user'`, and the reply as `role='assistant'` with the product cards
+snapshotted into `products_json`. That matches the seeded data exactly, where only
+assistant rows carry products.
+
+`user_id` is `NOT NULL` with a foreign key to `users`, so a guest conversation cannot be
+written even by mistake — the schema enforces decision D2 independently of our code.
+
+Two different reads, deliberately:
+
+- **`recent_messages(user_id, 10)`** → PydanticAI message objects replayed into the model.
+  Bounded at ten, because everything replayed is re-sent and re-paid on every turn.
+- **`stored_messages(user_id, 50)`** → the display shape, with `products_json` parsed back
+  into cards, so a returning shopper sees their conversation as it looked.
+
+The split matters: what the model needs to stay coherent and what a person needs to see are
+different amounts of history, and conflating them would make long conversations expensive.
+
+### What the agent sees about the customer
+
+Through PydanticAI **run dependencies** — `Agent(deps_type=ShopperContext)`, passed as
+`agent.run(..., deps=...)`, and rendered into the instructions by an `@agent.instructions`
+function.
+
+| Field | Source | Why |
+|---|---|---|
+| `signed_in` | Session cookie | Decides whether to greet by name and whether the chat is saved |
+| `first_name` | `users.first_name` | Greeting someone "Hi, Test" rather than reciting their full name |
+| `full_name` | `users.name` | The only name column guaranteed populated |
+| `email` | `users.email` | Identifies the account, as the problem asks |
+| `page_path` | The request | Where they are |
+| `viewing_product_id` / `viewing_product_name` | **Resolved server-side** from the path | Binds "this" to a real product |
+
+**Why deps rather than appending to the message.** The context never becomes part of the
+shopper's turn, so it is not written to `chat_messages`, not replayed as something the
+shopper said, and not something they can overwrite by typing. The instructions say so
+explicitly: if a typed message contradicts the context — claiming to be someone else —
+the context wins.
+
+The instructions also tell the agent **not to read the email back** unless asked. Knowing
+it and reciting it are different things.
+
+### How page context is passed
+
+```text
+browser                        backend
+  location.pathname  ──────►   ChatRequest.page_path
+  "/products/boola-boola-t-shirt"
+                                      │
+                                      ▼
+                          _shopper_context(user_id, page_path)
+                                      │  session cookie → who
+                                      │  path → get_product(id) → what
+                                      ▼
+                               ShopperContext (deps)
+```
+
+**The browser sends only a path.** It does not send a product id, a name, or a price. The
+backend parses the path, looks the product up in the catalogue, and discards anything that
+does not resolve. So a crafted request cannot make the agent believe it is discussing a
+product that does not exist, or that the visitor is someone they are not — identity comes
+from the session cookie, never the body.
+
+### Verification
+
+**Offline — 65 checks across the two suites, no credits.** New: a guest context never
+leaks a name or email; a signed-in context carries first name, full name and email and the
+instruction not to volunteer it; the viewed product binds "this"; no product is claimed
+when not on a product page; a run with deps succeeds; and **a run with no deps falls back
+to guest rather than crashing** — a gap found by the tests, since a missing dependency
+should never take the chat down mid-conversation.
+
+**Live — three exchanges.**
+
+> On `/products/boola-boola-t-shirt`: **"do you have this in pink?"**
+>
+> No. The Boola Boola T Shirt comes in the pictured navy colorway, with navy, white, and
+> gray in the design; pink isn't recorded for it.
+
+Resolved "this" with no clarifying question, and answered honestly from
+`colors_in_design`. That is the exact scenario the problem names.
+
+> Signed in: **"hi, do you know who I am?"** → "Hi, Test. I know you're signed in under
+> the name Test…" — and **did not** state the email address.
+>
+> Signed out, same question → "You're not signed in, so I don't know your name or
+> personal details." `GET /api/chat/history` returned `[]`.
+
+**Returning shopper, through the UI.** Full page reload, signed in: the panel restored 19
+messages and 23 product cards, including the instructor's seeded conversation, with the
+footer reading "Signed in as Test. This chat is saved. Clear it".
+
+**One cosmetic fix.** The seeded assistant rows contain markdown, so a restored message
+displayed a literal `**$68**`. Our own agent is told not to use markdown, but the supplied
+data predates that. Added a minimal renderer that wraps `**bold**` spans in `<strong>` by
+splitting on the delimiter — no HTML is ever interpreted from message text, so a stored
+message still cannot inject markup. Verified: zero bubbles showing literal asterisks, two
+rendering bold.
+
+**Cost:** three billed exchanges, bringing HW4 to fourteen.
 - Sessions do not survive a backend restart, and there is no expiry or "log out everywhere".
 - There is no password reset and no email verification. Neither is asked for by the
   assignment; both would matter in production.

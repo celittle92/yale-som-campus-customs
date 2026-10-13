@@ -598,6 +598,48 @@ Cost: two billed exchanges.
 
 ---
 
+## Problem 8: Customer memory
+
+### Prompt
+
+> Lets move to Problem 8: Customer memory.
+> I think we did this already 😎 at least part of it!
+>
+> When a shopper is logged in, save their chat history in the database in an appropriate table and reload it when they return. The agent should know WHO is chatting - including the name and email. Put that in agent deps (or an equivalent clear pattern) and/or tools the agent can call.
+>
+> Also pass enough PAGE CONTEXT so if someone is on a product page and asks 'do you have this in pink?' the agent knows which item they mean. You can put code into the agent context.
+>
+> Guests can and should be able to still chat but the history only needs to persist for logged-in users (we did this part. woot. but double check everything so it's right and to the specs above).
+>
+> Document this in output/harness.md -- how the user chat history is stored, what customer fields the agent sees, and how the page context is passed.
+
+Right that persistence was done. The audit found three real gaps. The history was replayed
+to the *model* but the panel always opened empty, so a returning shopper never saw it;
+`clear_messages()` existed but no endpoint ever called it, making it dead code; and the
+agent had no idea who it was talking to or what page they were on.
+
+Added `ShopperContext` as PydanticAI run dependencies — signed-in state, first name, full
+name, email, page path, and the product being viewed — rendered into the instructions by
+an `@agent.instructions` function. Deps rather than appending to the message, so the
+context never enters `chat_messages`, is never replayed as something the shopper said, and
+cannot be overwritten by typing. Added `GET` and `DELETE /api/chat/history`, and the panel
+now restores the conversation on sign-in with a "Clear it" control.
+
+Page context is a path only: the browser sends `location.pathname`, and the backend
+resolves what it means against the catalogue. Identity comes from the session cookie, so
+neither can be forged in the request body.
+
+Evidence: 65 offline checks pass, including one that caught a run with no deps crashing
+rather than falling back to guest. Live, on the Boola Boola product page, "do you have
+this in pink?" resolved to that product with no clarifying question and answered honestly.
+Signed in, the agent greeted by name without reciting the email; signed out it said it did
+not know, and the history endpoint returned empty. A full reload as a returning shopper
+restored 19 messages and 23 cards. Full detail in
+[`output/harness.md`](output/harness.md#problem-8-customer-memory). Cost: three billed
+exchanges.
+
+---
+
 <!--
 Template for the next problem. Copy below this line and replace N and the bracketed text.
 

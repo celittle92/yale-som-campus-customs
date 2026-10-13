@@ -218,6 +218,84 @@ class ChatAnswer(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
+    page_path: str | None = Field(
+        default=None,
+        max_length=200,
+        description="Where the shopper is on the site, e.g. '/products/basic-hoodie-big-"
+        "yale'. The backend resolves what that means; the browser only reports the path, "
+        "never the product data.",
+    )
+
+
+class ShopperContext(BaseModel):
+    """What the agent knows about who it is talking to and what they are looking at.
+
+    Passed as PydanticAI run dependencies and rendered into the instructions for each
+    run. Built server-side from the session cookie and the page path — none of it is
+    taken on trust from the browser.
+    """
+
+    signed_in: bool = False
+    first_name: str | None = None
+    full_name: str | None = None
+    email: str | None = None
+
+    page_path: str | None = None
+    viewing_product_id: str | None = Field(
+        default=None,
+        description="Set when the shopper is on a product detail page. 'this' in their "
+        "question almost certainly means this product.",
+    )
+    viewing_product_name: str | None = None
+
+    def as_instructions(self) -> str:
+        """Render the context as a block appended to the system instructions."""
+        lines: list[str] = ["## Who you are talking to, and where they are"]
+
+        if self.signed_in:
+            lines.append(
+                f"This shopper is signed in. Their name is {self.full_name}"
+                f"{f' and they go by {self.first_name}' if self.first_name else ''}, "
+                f"and their account email is {self.email}."
+            )
+            lines.append(
+                "Greet them by first name if it fits naturally. Their earlier messages "
+                "are in this conversation, so you may refer back to them. Do not read "
+                "their email address back to them unless they ask for it."
+            )
+        else:
+            lines.append(
+                "This shopper is not signed in, so you do not know their name and their "
+                "conversation is not being saved. Do not ask for personal details. If "
+                "they want the conversation kept, they can log in."
+            )
+
+        if self.viewing_product_id:
+            lines.append(
+                f"They are currently looking at **{self.viewing_product_name}** "
+                f"(`{self.viewing_product_id}`). If they say 'this', 'it', or 'this one' "
+                "without naming a product, they mean this one — look it up by that id "
+                "rather than asking which item they mean."
+            )
+        elif self.page_path:
+            where = {
+                "/": "the home page",
+                "/products": "the full product list",
+                "/about": "the about page",
+            }.get(self.page_path)
+            if where:
+                lines.append(f"They are on {where}.")
+
+        return "\n\n".join(lines)
+
+
+class ChatHistoryMessage(BaseModel):
+    """One stored turn, as the chat panel re-renders it for a returning shopper."""
+
+    role: str
+    content: str
+    products: list[ProductCard] = Field(default_factory=list)
+    created_at: str
 
 
 class ChatReply(BaseModel):

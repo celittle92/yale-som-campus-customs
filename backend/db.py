@@ -230,6 +230,37 @@ def save_exchange(
         )
 
 
+def stored_messages(user_id: int, limit: int = 50) -> list[dict[str, object]]:
+    """A signed-in shopper's saved conversation, oldest first, for re-rendering in the
+    chat panel when they come back.
+
+    Separate from `recent_messages`, which builds PydanticAI objects for the model. This
+    one returns the display shape, including the product cards snapshotted at the time.
+    """
+    with connect() as con:
+        rows = con.execute(
+            "select role, content, products_json, created_at from chat_messages"
+            " where user_id = ? order by id desc limit ?",
+            (user_id, limit),
+        ).fetchall()
+
+    out: list[dict[str, object]] = []
+    for row in reversed(rows):
+        try:
+            products = json.loads(row["products_json"]) if row["products_json"] else []
+        except ValueError:
+            products = []
+        out.append(
+            {
+                "role": row["role"],
+                "content": row["content"],
+                "products": products,
+                "created_at": row["created_at"],
+            }
+        )
+    return out
+
+
 def clear_messages(user_id: int) -> int:
     """Delete one shopper's conversation. Theirs to erase, per D2."""
     with connect_rw() as con:

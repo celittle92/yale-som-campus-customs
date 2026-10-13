@@ -1,4 +1,5 @@
 import type {
+  ChatHistoryMessage,
   ChatReply,
   ProductDetail,
   ProductSummary,
@@ -32,16 +33,32 @@ export function fetchProduct(productId: string): Promise<ProductDetail> {
  * Problem 3 ships the stub backend route, which answers in the shape the real agent
  * will use. Problem 5 swaps the implementation behind this call; nothing here changes.
  */
-export async function sendChatMessage(message: string): Promise<ChatReply> {
+export async function sendChatMessage(
+  message: string,
+  pagePath?: string,
+): Promise<ChatReply> {
   const response = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message }),
+    // Only the path is sent. The backend decides what it means and looks the product
+    // up itself, so the browser cannot assert which product is being discussed.
+    body: JSON.stringify({ message, page_path: pagePath ?? null }),
   })
   if (!response.ok) {
     throw new Error('The shop assistant is not available right now.')
   }
   return (await response.json()) as ChatReply
+}
+
+/** A signed-in shopper's saved conversation. Empty for guests. */
+export async function fetchChatHistory(): Promise<ChatHistoryMessage[]> {
+  const response = await fetch('/api/chat/history')
+  if (!response.ok) return []
+  return (await response.json()) as ChatHistoryMessage[]
+}
+
+export async function deleteChatHistory(): Promise<void> {
+  await fetch('/api/chat/history', { method: 'DELETE' })
 }
 
 /**

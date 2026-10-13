@@ -45,3 +45,11 @@ export type SignupInput = {
   password: string
   confirm_password: string
 }
+
+/** One stored turn, as the panel re-renders it for a returning shopper. */
+export type ChatHistoryMessage = {
+  role: 'user' | 'assistant'
+  content: string
+  products: ProductSummary[]
+  created_at: string
+}

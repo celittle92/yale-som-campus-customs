@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { formatPrice, sendChatMessage } from '../api'
+import {
+  deleteChatHistory,
+  fetchChatHistory,
+  formatPrice,
+  sendChatMessage,
+} from '../api'
 import { useAuth } from '../AuthContext'
 import { useChat } from '../ChatContext'
 import type { ProductSummary } from '../types'
@@ -9,6 +14,18 @@ type Message = {
   role: 'user' | 'assistant'
   content: string
   products?: ProductSummary[]
+}
+
+/**
+ * Render **bold** spans as bold. Our agent is told not to use markdown, but the seeded
+ * conversations in the supplied database contain it, so a returning shopper would
+ * otherwise see literal asterisks around a price. Deliberately minimal — it splits on
+ * the delimiter and wraps the parts, so no HTML is ever interpreted from message text.
+ */
+function renderText(text: string) {
+  return text.split(/\*\*(.+?)\*\*/g).map((part, index) =>
+    index % 2 === 1 ? <strong key={index}>{part}</strong> : part,
+  )
 }
 
 const GREETING: Message = {
@@ -33,6 +50,35 @@ export default function ChatPanel() {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, open])
 
+  // Load the saved conversation when a signed-in shopper returns, so they see what they
+  // said last time rather than an empty panel that quietly remembers anyway. Guests get
+  // an empty list from the API, because nothing was ever stored for them.
+  useEffect(() => {
+    let active = true
+    if (!user) {
+      setMessages([GREETING])
+      return
+    }
+    fetchChatHistory()
+      .then((stored) => {
+        if (!active || stored.length === 0) return
+        setMessages([
+          GREETING,
+          ...stored.map((entry) => ({
+            role: entry.role,
+            content: entry.content,
+            products: entry.products,
+          })),
+        ])
+      })
+      .catch(() => {
+        /* An empty panel is a fine fallback; never block chatting on this. */
+      })
+    return () => {
+      active = false
+    }
+  }, [user])
+
   // A product page can open the panel with the question already written. Take it once,
   // then clear it so reopening the panel later does not resurrect an old question.
   useEffect(() => {
@@ -52,7 +98,9 @@ export default function ChatPanel() {
     setSending(true)
     setError(null)
     try {
-      const reply = await sendChatMessage(message)
+      // Tell the backend where the shopper is, so "do you have this in pink?" on a
+      // product page resolves to that product.
+      const reply = await sendChatMessage(message, location.pathname)
       setMessages((prev) => [
         ...prev,
         { role: 'assistant', content: reply.reply, products: reply.products },
@@ -121,7 +169,7 @@ export default function ChatPanel() {
                   : 'mr-auto w-fit max-w-[85%] rounded-lg bg-cream px-3 py-2 text-sm whitespace-pre-line text-body'
               }
             >
-              {message.content}
+              {renderText(message.content)}
             </div>
 
             {/* Cards the assistant chose to show. Every one is a real catalogue row
@@ -174,7 +222,19 @@ export default function ChatPanel() {
           than letting someone lose a conversation they assumed was saved. */}
       <p className="border-t border-line px-4 py-2 text-xs text-muted">
         {user ? (
-          <>Signed in as {user.first_name ?? user.name}.</>
+          <>
+            Signed in as {user.first_name ?? user.name}. This chat is saved.{' '}
+            <button
+              type="button"
+              onClick={async () => {
+                await deleteChatHistory()
+                setMessages([GREETING])
+              }}
+              className="cursor-pointer underline hover:text-accent"
+            >
+              Clear it
+            </button>
+          </>
         ) : (
           <>
             Not signed in, so this chat is not saved.{' '}

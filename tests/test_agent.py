@@ -18,6 +18,7 @@ import tools  # noqa: E402
 from agent import MAX_HISTORY_MESSAGES, PROMPT_PATH, create_agent, load_prompt  # noqa: E402
 from models import (  # noqa: E402
     ChatAnswer, ChatReply, LookupError, ProductCard, ProductDetails, ProductLookup,
+    ShopperContext,
 )
 
 failures = []
@@ -143,6 +144,41 @@ check("total_matching counts beyond what is shown", cheap.total_matching >= len(
 banded = tools.find_products_by_price(min_price_usd=60, max_price_usd=75)
 check("a band excludes both ends correctly",
       all(60 <= p.price_usd <= 75 for p in banded.products))
+
+print("\nShopper context (deps) and page context")
+guest = ShopperContext(page_path="/products")
+g = guest.as_instructions()
+check("a guest is described as not signed in", "not signed in" in g)
+check("a guest's conversation is described as unsaved", "not being saved" in g)
+check("no name or email leaks for a guest", "None" not in g)
+
+known = ShopperContext(
+    signed_in=True, first_name="Test", full_name="Test User",
+    email="test@campuscustoms.yale.edu", page_path="/products/basic-hoodie-big-yale",
+    viewing_product_id="basic-hoodie-big-yale", viewing_product_name="Basic Hoodie Big Yale",
+)
+k = known.as_instructions()
+check("the agent is told the shopper's first name", "Test" in k)
+check("the agent is told the full name", "Test User" in k)
+check("the agent is told the email", "test@campuscustoms.yale.edu" in k)
+check("the agent is told not to volunteer the email", "unless they ask" in k)
+check("the viewed product id is passed", "basic-hoodie-big-yale" in k)
+check("the viewed product name is passed", "Basic Hoodie Big Yale" in k)
+check("'this' is explicitly bound to the viewed product", "they mean this one" in k)
+
+browsing = ShopperContext(signed_in=True, first_name="A", full_name="A B", email="a@b.c", page_path="/products")
+check("no product is claimed when not on a product page",
+      "they mean this one" not in browsing.as_instructions())
+
+print("\nThe agent accepts the context as dependencies")
+ctx_agent = create_agent(TestModel())
+ctx_result = ctx_agent.run_sync("hello", deps=known)
+check("a run with deps succeeds", isinstance(ctx_result.output, ChatAnswer))
+check("a run with NO deps falls back to guest rather than crashing",
+      isinstance(create_agent(TestModel()).run_sync("hello").output, ChatAnswer))
+check("instructions mention the context", "product_match_label" in load_prompt())
+check("the instructions tell the agent the context exists",
+      "Who you are talking to, and where they are" in load_prompt())
 
 print("\nResponse shapes")
 card = ProductCard(

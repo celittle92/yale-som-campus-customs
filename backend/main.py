@@ -19,16 +19,19 @@ import sessions
 from agent import MAX_HISTORY_MESSAGES, build_agent, model_name
 from auth import hash_password, verify_password
 from models import (
+    ChatHistoryMessage,
     ChatReply,
     LoginRequest,
     ChatRequest,
     ProductDetail,
     ProductSummary,
     PublicUser,
+    ShopperContext,
     SignupRequest,
 )
 from db import (
     EmailAlreadyRegistered,
+    clear_messages,
     create_user,
     get_inventory,
     get_product,
@@ -38,6 +41,7 @@ from db import (
     list_products,
     recent_messages,
     save_exchange,
+    stored_messages,
 )
 
 logger = logging.getLogger("campus_customs")
@@ -178,6 +182,58 @@ def me(campus_customs_session: str | None = Cookie(default=None)) -> PublicUser 
     return _public_user(row) if row else None
 
 
+def _shopper_context(user_id: int | None, page_path: str | None) -> ShopperContext:
+    """Build the agent's view of the shopper, server-side.
+
+    The browser reports only a path. Who they are comes from the session cookie, and
+    what that path means is resolved here against the catalogue — so neither the
+    identity nor the product data can be forged by a crafted request body.
+    """
+    context = ShopperContext(page_path=page_path)
+
+    if user_id is not None:
+        row = get_user_by_id(user_id)
+        if row is not None:
+            context.signed_in = True
+            context.first_name = row["first_name"]
+            context.full_name = row["name"]
+            context.email = row["email"]
+
+    # "/products/<id>" is the only path that carries meaning for the agent.
+    if page_path and page_path.startswith("/products/"):
+        product_id = page_path.removeprefix("/products/").strip("/")
+        found = get_product(product_id) if product_id else None
+        if found is not None:
+            context.viewing_product_id = found.product_id
+            context.viewing_product_name = found.name
+
+    return context
+
+
+@app.get("/api/chat/history", response_model=list[ChatHistoryMessage])
+def chat_history(
+    campus_customs_session: str | None = Cookie(default=None),
+) -> list[dict[str, object]]:
+    """A signed-in shopper's saved conversation, so the panel can show it on return.
+
+    Guests get an empty list — nothing was ever stored for them.
+    """
+    user_id = sessions.user_id_for(campus_customs_session)
+    return stored_messages(user_id) if user_id else []
+
+
+@app.delete("/api/chat/history", status_code=204)
+def delete_chat_history(
+    campus_customs_session: str | None = Cookie(default=None),
+) -> None:
+    """Let a shopper erase their own conversation. Theirs to delete, per decision D2."""
+    user_id = sessions.user_id_for(campus_customs_session)
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Log in to manage your chat.")
+    removed = clear_messages(user_id)
+    logger.info("cleared %s stored messages for user %s", removed, user_id)
+
+
 @app.post("/api/chat", response_model=ChatReply)
 async def chat(
     request: ChatRequest,
@@ -194,10 +250,11 @@ async def chat(
     """
     user_id = sessions.user_id_for(campus_customs_session)
     history = recent_messages(user_id, MAX_HISTORY_MESSAGES) if user_id else []
+    deps = _shopper_context(user_id, request.page_path)
 
     try:
         agent = build_agent()
-        result = await agent.run(request.message, message_history=history)
+        result = await agent.run(request.message, message_history=history, deps=deps)
         answer = result.output
         # Token usage per exchange, so spend is measurable rather than guessed at.
         # One shopper question is several model calls: one to pick a tool, another to

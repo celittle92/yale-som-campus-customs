@@ -13,12 +13,12 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic_ai import Agent
+from pydantic_ai import Agent, RunContext
 from pydantic_ai.models.openai import OpenAIResponsesModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from app_config import DEFAULT_OPENAI_MODEL, build_portkey_client, load_settings
-from models import ChatAnswer
+from models import ChatAnswer, ShopperContext
 from tools import (
     browse_category,
     check_size_availability,
@@ -47,7 +47,7 @@ def load_prompt() -> str:
     return PROMPT_PATH.read_text(encoding="utf-8")
 
 
-def create_agent(model) -> Agent[None, ChatAnswer]:
+def create_agent(model) -> Agent[ShopperContext, ChatAnswer]:
     """Assemble the agent around a given model.
 
     Separate from `build_agent` so tests can pass PydanticAI's `TestModel` and exercise
@@ -56,10 +56,24 @@ def create_agent(model) -> Agent[None, ChatAnswer]:
     """
     agent = Agent(
         model,
+        deps_type=ShopperContext,
         output_type=ChatAnswer,
         instructions=load_prompt,  # re-read per run, so prompt edits land immediately
         retries=2,
     )
+
+    @agent.instructions
+    def shopper_context(ctx: RunContext[ShopperContext]) -> str:
+        """Who is chatting and what they are looking at, rebuilt on every run.
+
+        This is the deps pattern: the context is passed into `agent.run(deps=...)` and
+        rendered here, rather than being concatenated onto the shopper's message. That
+        keeps it out of the saved conversation and out of anything the shopper can
+        overwrite by typing.
+        """
+        # A run without deps is treated as an anonymous visitor rather than failing.
+        # The safe default is "we know nothing about you", never a crash mid-chat.
+        return (ctx.deps or ShopperContext()).as_instructions()
 
     # Tools read the catalogue and cost nothing to call. The model may call several in
     # one turn; each is a database read, not a model call.
@@ -77,7 +91,7 @@ def create_agent(model) -> Agent[None, ChatAnswer]:
 
 
 @lru_cache(maxsize=1)
-def build_agent() -> Agent[None, ChatAnswer]:
+def build_agent() -> Agent[ShopperContext, ChatAnswer]:
     """The production agent, constructed once per process.
 
     `gpt-6-luna` and friends reject tool definitions on the chat-completions endpoint, so
