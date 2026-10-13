@@ -113,3 +113,35 @@ export function formatPrice(price: number): string {
   // the full price must show rather than being silently dropped.
   return price.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
 }
+
+export function fetchSimilar(productId: string): Promise<ProductSummary[]> {
+  return getJSON<ProductSummary[]>(
+    `/api/products/${encodeURIComponent(productId)}/similar`,
+  )
+}
+
+/** Stock for every product and size, for the browser-side filter. */
+export function fetchStock(): Promise<Record<string, Record<string, number>>> {
+  return getJSON<Record<string, Record<string, number>>>('/api/stock')
+}
+
+/** Server-side recently viewed. Empty for guests, who keep their own list locally. */
+export async function fetchRecentlyViewed(): Promise<ProductSummary[]> {
+  try {
+    return await getJSON<ProductSummary[]>('/api/recently-viewed')
+  } catch {
+    return []
+  }
+}
+
+export async function clearRecentlyViewed(): Promise<void> {
+  await fetch('/api/recently-viewed', { method: 'DELETE' })
+}
+
+/** Fetch specific products by id, for a guest's locally-kept recently-viewed list. */
+export async function fetchProductsByIds(ids: string[]): Promise<ProductSummary[]> {
+  const found = await Promise.all(
+    ids.map((id) => fetchProduct(id).catch(() => null)),
+  )
+  return found.filter((p): p is NonNullable<typeof p> => p !== null)
+}

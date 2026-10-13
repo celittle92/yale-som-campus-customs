@@ -1,23 +1,71 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import ProductCard from '../components/ProductCard'
-import { fetchProducts } from '../api'
+import ProductFilter, {
+  applyFilters,
+  EMPTY_FILTERS,
+  type Filters,
+} from '../components/ProductFilter'
+import ProductRow from '../components/ProductRow'
+import {
+  clearRecentlyViewed,
+  fetchProducts,
+  fetchProductsByIds,
+  fetchRecentlyViewed,
+  fetchStock,
+} from '../api'
+import { useAuth } from '../AuthContext'
 import { useChat } from '../ChatContext'
+import {
+  clearGuestRecentlyViewed,
+  readGuestRecentlyViewed,
+} from '../recentlyViewed'
 import type { ProductSummary } from '../types'
 
 export default function Products() {
   const [products, setProducts] = useState<ProductSummary[] | null>(null)
+  const [stock, setStock] = useState<Record<string, Record<string, number>>>({})
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
+  const [recent, setRecent] = useState<ProductSummary[]>([])
   const [error, setError] = useState<string | null>(null)
   const { results, setResults, openPanel } = useChat()
+  const { user } = useAuth()
 
   useEffect(() => {
     let active = true
     fetchProducts()
       .then((data) => active && setProducts(data))
       .catch((caught: Error) => active && setError(caught.message))
+    // The filter needs stock, but the grid should not wait for it.
+    fetchStock()
+      .then((data) => active && setStock(data))
+      .catch(() => {
+        /* filtering by size degrades gracefully; the grid still works */
+      })
     return () => {
       active = false
     }
   }, [])
+
+  // Signed in: the server-side list, which follows the account. Signed out: whatever
+  // their own browser remembers, which never left it.
+  useEffect(() => {
+    let active = true
+    const load = user
+      ? fetchRecentlyViewed()
+      : fetchProductsByIds(readGuestRecentlyViewed())
+    load.then((data) => active && setRecent(data)).catch(() => undefined)
+    return () => {
+      active = false
+    }
+  }, [user])
+
+  const visible = useMemo(
+    () => (products ? applyFilters(products, filters, stock) : []),
+    [products, filters, stock],
+  )
+
+  const filtering =
+    !!filters.type || !!filters.color || !!filters.size || filters.inStockOnly
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-12">
@@ -27,9 +75,8 @@ export default function Products() {
         description and which sizes are left.
       </p>
 
-      {/* Matches the shop assistant put here. These are the same ProductCard used by the
-          full grid below, so a card from chat behaves exactly like any other: clicking
-          it opens the single-item page from Problem 3. */}
+      {/* Matches the shop assistant put here. Same ProductCard as the grid below, so a
+          card from chat opens the single-item page exactly like any other. */}
       {results && results.products.length > 0 && (
         <section
           aria-labelledby="chat-results-heading"
@@ -66,7 +113,6 @@ export default function Products() {
               </button>
             </div>
           </div>
-
           <ul className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {results.products.map((product) => (
               <ProductCard key={product.product_id} product={product} />
@@ -74,6 +120,24 @@ export default function Products() {
           </ul>
         </section>
       )}
+
+      <ProductRow
+        title="Recently viewed"
+        subtitle={
+          user
+            ? 'Saved to your account, so it follows you between visits.'
+            : 'Kept in this browser only. Log in to keep it between visits.'
+        }
+        products={recent}
+        action={{
+          label: 'Clear',
+          onClick: () => {
+            if (user) void clearRecentlyViewed()
+            else clearGuestRecentlyViewed()
+            setRecent([])
+          },
+        }}
+      />
 
       {error && (
         <p
@@ -88,15 +152,44 @@ export default function Products() {
 
       {products && (
         <>
-          <h2 className="mt-12 font-display text-2xl font-bold text-ink">
-            {results && results.products.length > 0 ? 'Everything else' : 'All products'}
-          </h2>
-          <p className="mt-1 text-sm text-muted">{products.length} styles</p>
-          <ul className="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {products.map((product) => (
-              <ProductCard key={product.product_id} product={product} />
-            ))}
-          </ul>
+          <ProductFilter
+            products={products}
+            filters={filters}
+            onChange={setFilters}
+            matchCount={visible.length}
+          />
+
+          {visible.length === 0 ? (
+            <div className="mt-10 rounded-lg border border-line bg-paper p-8 text-center">
+              <p className="text-ink">Nothing matches those filters.</p>
+              <p className="mt-1 text-sm text-body">
+                {filters.size
+                  ? `We may carry it in another size — try clearing the size filter.`
+                  : 'Try widening one of them.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => setFilters(EMPTY_FILTERS)}
+                className="mt-4 cursor-pointer rounded bg-accent px-5 py-2 text-sm font-semibold text-white hover:bg-ink"
+              >
+                Clear filters
+              </button>
+            </div>
+          ) : (
+            <>
+              <h2 className="mt-10 font-display text-2xl font-bold text-ink">
+                {filtering ? 'Matching products' : 'All products'}
+              </h2>
+              <p className="mt-1 text-sm text-muted">
+                {visible.length} {visible.length === 1 ? 'style' : 'styles'}
+              </p>
+              <ul className="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {visible.map((product) => (
+                  <ProductCard key={product.product_id} product={product} />
+                ))}
+              </ul>
+            </>
+          )}
         </>
       )}
     </div>

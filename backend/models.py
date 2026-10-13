@@ -248,6 +248,12 @@ class ShopperContext(BaseModel):
     )
     viewing_product_name: str | None = None
 
+    recently_viewed: list[str] = Field(
+        default_factory=list,
+        description="Names of products this shopper opened recently, most recent first. "
+        "Lets the agent answer 'that hoodie I was looking at'.",
+    )
+
     def as_instructions(self) -> str:
         """Render the context as a block appended to the system instructions."""
         lines: list[str] = ["## Who you are talking to, and where they are"]
@@ -285,6 +291,14 @@ class ShopperContext(BaseModel):
             }.get(self.page_path)
             if where:
                 lines.append(f"They are on {where}.")
+
+        if self.recently_viewed:
+            lines.append(
+                "Products they have opened recently, most recent first: "
+                + ", ".join(self.recently_viewed)
+                + ". If they refer back to something they were looking at, this is "
+                "probably it. Search for it by name to get its id before answering."
+            )
 
         return "\n\n".join(lines)
 

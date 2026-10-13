@@ -1,14 +1,19 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { fetchProduct, formatPrice } from '../api'
+import { fetchProduct, fetchSimilar, formatPrice } from '../api'
+import ProductRow from '../components/ProductRow'
+import { recordGuestView } from '../recentlyViewed'
 import { useChat } from '../ChatContext'
-import type { ProductDetail as Detail } from '../types'
+import type { ProductDetail as Detail, ProductSummary } from '../types'
+
+type ProductSummaryList = ProductSummary[]
 
 export default function ProductDetail() {
   const { productId } = useParams<{ productId: string }>()
   const [product, setProduct] = useState<Detail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedSize, setSelectedSize] = useState<string | null>(null)
+  const [similar, setSimilar] = useState<Detail[] | ProductSummaryList>([])
   const { openWith } = useChat()
 
   useEffect(() => {
@@ -20,6 +25,17 @@ export default function ProductDetail() {
     fetchProduct(productId)
       .then((data) => active && setProduct(data))
       .catch((caught: Error) => active && setError(caught.message))
+
+    // Recently viewed. For a signed-in shopper the GET above already recorded it
+    // server-side; a guest's list stays in their own browser and is never sent.
+    recordGuestView(productId)
+
+    // Recommendations load separately so they never delay the product itself.
+    setSimilar([])
+    fetchSimilar(productId)
+      .then((data) => active && setSimilar(data))
+      .catch(() => undefined)
+
     return () => {
       active = false
     }
@@ -191,6 +207,15 @@ export default function ProductDetail() {
           )}
         </div>
       </div>
+
+      {/* You might also like. Similar in type and colour, computed by the backend from
+          catalogue data. Out-of-stock items are ranked down, so a recommendation is
+          usually something the shopper can actually buy. */}
+      <ProductRow
+        title="You might also like"
+        subtitle="Similar in style and colour to this one."
+        products={similar as ProductSummary[]}
+      />
     </div>
   )
 }

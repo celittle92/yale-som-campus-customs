@@ -268,6 +268,76 @@ def clear_messages(user_id: int) -> int:
         return cursor.rowcount
 
 
+# --- Recently viewed ---------------------------------------------------------------
+#
+# This is the one additive schema change to the supplied database. No existing table is
+# altered and no existing row is touched; `CREATE TABLE IF NOT EXISTS` adds a table the
+# assignment did not ship. Signed-out shoppers are never written here — their list lives
+# in their own browser (see output/usability.md).
+
+RECENTLY_VIEWED_LIMIT = 8
+
+
+def ensure_schema() -> None:
+    """Create the app-owned table if it is missing. Safe to call on every startup."""
+    with connect_rw() as con:
+        con.execute(
+            """
+            create table if not exists recently_viewed (
+                id integer primary key autoincrement,
+                user_id integer not null,
+                product_id text not null,
+                viewed_at text not null default (datetime('now')),
+                unique (user_id, product_id),
+                foreign key (user_id) references users(id),
+                foreign key (product_id) references catalogue(product_id)
+            )
+            """
+        )
+
+
+def record_view(user_id: int, product_id: str) -> None:
+    """Note that a signed-in shopper opened a product.
+
+    `UNIQUE (user_id, product_id)` plus an upsert means re-opening something moves it to
+    the top rather than filling the list with duplicates.
+    """
+    with connect_rw() as con:
+        con.execute(
+            "insert into recently_viewed (user_id, product_id) values (?, ?)"
+            " on conflict(user_id, product_id)"
+            " do update set viewed_at = datetime('now')",
+            (user_id, product_id),
+        )
+
+
+def recently_viewed(user_id: int, limit: int = RECENTLY_VIEWED_LIMIT) -> list[str]:
+    with connect() as con:
+        rows = con.execute(
+            "select product_id from recently_viewed where user_id = ?"
+            " order by viewed_at desc, id desc limit ?",
+            (user_id, limit),
+        ).fetchall()
+    return [r["product_id"] for r in rows]
+
+
+def clear_recently_viewed(user_id: int) -> int:
+    with connect_rw() as con:
+        return con.execute(
+            "delete from recently_viewed where user_id = ?", (user_id,)
+        ).rowcount
+
+
+def all_stock() -> dict[str, dict[str, int]]:
+    """Every product's stock by size, in one read, for the browser-side filter."""
+    with connect() as con:
+        rows = con.execute("select product_id, size, quantity from inventory").fetchall()
+    out: dict[str, dict[str, int]] = {}
+    for row in rows:
+        out.setdefault(row["product_id"], {})[row["size"]] = int(row["quantity"])
+    return out
+
+
 def image_path(product_id: str) -> Path | None:
     """Resolve a product's image, refusing anything that escapes the image folder.
 

@@ -640,6 +640,50 @@ exchanges.
 
 ---
 
+## Problem 9: Usability improvements
+
+### Prompt
+
+> Problem 9: Usability improvements
+>
+> Now that our shop is working well, we need to improve it.
+>
+> We will implement 2 frontend usability improvements:
+>
+> * I want a product filter that filters items by type, color, and size. Include an 'exclude out of stock' button that will exclude items that are in scope of the filter but out of stock.
+> * Add a 'You might also like' carousel to the bottom of individual product pages. Have the recommendations be items that are similar in type/color
+>
+> We will also implement 2 backend/agent usability improvements:
+>
+> * I want to have a backend logic that has a personalized 'recently viewed' service. This can use cookies/data from unlogged in users but it absolutely must work for logged in users
+> * I want to make it so the agent works faster to turn up results. Right now I think when a chat is sent it takes too long in the 'thinking' phase
+>
+> Front end improvements are things that make the site look better and make it easier to use. The agent/backend improvements should make the agent output better/more accurate/safer. Make sure my choices do that.
+>
+> Write output/usability.md BEFORE or AS we build this out. For each improvement write:
+> * What I added
+> * Why it helps a shopper or the business
+>
+> Then make sure that the improvements show up in the running app. Graders are going to read the writeup and look for the features so pls make sure they are there on the site!!!
+
+Wrote [`output/usability.md`](output/usability.md) first, then built all four and
+verified each in the running app.
+
+Measured results: the filter narrows 102 → 29 crewnecks → 17 navy blue → 12 in stock in
+L, matching the database exactly — the brief's own example. The carousel returns 8 similar
+items, all navy hoodies at $68.00. Recently viewed records newest-first for signed-in
+shoppers and works for guests from `localStorage` with no cookie set. The assistant went
+from a 4.9s mean to 3.5s, a 29% cut, with all 65 offline checks still passing and a live
+accuracy and safety re-check showing no regression.
+
+Two judgement calls are written up at the end of the usability document. The brief allowed
+cookies for guest recently-viewed, but that would contradict decision D2 from Problem 2,
+so guests get `localStorage` instead — the feature works and nothing leaves their browser.
+And speed is honestly a usability win rather than an accuracy or safety one, so it was
+bought only in ways that cannot touch correctness.
+
+---
+
 <!--
 Template for the next problem. Copy below this line and replace N and the bracketed text.
 

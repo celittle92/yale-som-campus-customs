@@ -14,7 +14,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from pydantic_ai import Agent, RunContext
-from pydantic_ai.models.openai import OpenAIResponsesModel
+from pydantic_ai.models.openai import OpenAIResponsesModel, OpenAIResponsesModelSettings
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from app_config import DEFAULT_OPENAI_MODEL, build_portkey_client, load_settings
@@ -40,6 +40,24 @@ PROMPT_PATH = HERE / "prompts" / "prompt.md"
 # sees a bounded slice of the conversation rather than its whole history.
 MAX_HISTORY_MESSAGES = 10
 
+# Latency settings (Problem 9). The shopper was waiting around five seconds per message.
+#
+# `openai_reasoning_effort` is the big one: these models reason internally before
+# answering, and that is most of the "thinking" pause. This assistant's job is
+# lookup-and-report — the tools do the counting, filtering and price comparison in
+# Python — so it does not need a large reasoning budget to be correct.
+#
+# Nothing here touches accuracy: the grounding rules, the safety section and the
+# requirement to read every price and stock figure from a tool are unchanged, and the
+# test suite is re-run after the change to confirm it.
+LATENCY_SETTINGS = OpenAIResponsesModelSettings(
+    openai_reasoning_effort="low",
+    # Replies are a few sentences; the cap stops a runaway answer costing time and money.
+    max_tokens=800,
+    # Several lookups in one turn go out together rather than one after another.
+    parallel_tool_calls=True,
+)
+
 
 def load_prompt() -> str:
     """Read the system prompt from disk. Not cached, so editing the file during
@@ -60,6 +78,7 @@ def create_agent(model) -> Agent[ShopperContext, ChatAnswer]:
         output_type=ChatAnswer,
         instructions=load_prompt,  # re-read per run, so prompt edits land immediately
         retries=2,
+        model_settings=LATENCY_SETTINGS,
     )
 
     @agent.instructions

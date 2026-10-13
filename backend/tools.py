@@ -247,6 +247,42 @@ def find_products_by_price(
     )
 
 
+def similar_products(product_id: str, limit: int = 8) -> list[ProductLookup]:
+    """Products like this one, best match first.
+
+    Scored on category, shared colours, shared search tags and closeness in price —
+    everything from the catalogue, nothing invented. Items with no stock in any size are
+    pushed down, so a recommendation is usually something a shopper can actually buy.
+    """
+    target = get_product(product_id)
+    if target is None:
+        return []
+
+    target_category = canonical_category(target.garment_type)
+    target_colors = {c.lower() for c in target.colors}
+    target_tags = {t.lower() for t in target.search_tags}
+
+    scored: list[tuple[float, object]] = []
+    for product in list_products():
+        if product.product_id == target.product_id:
+            continue
+        score = 0.0
+        if canonical_category(product.garment_type) == target_category:
+            score += 10
+        score += 3 * len(target_colors & {c.lower() for c in product.colors})
+        score += 2 * len(target_tags & {t.lower() for t in product.search_tags})
+        # Closer in price is a better substitute; $0 apart scores 4, $40 apart scores 0.
+        score += max(0.0, 4 - abs(product.price - target.price) / 10)
+        if score <= 0:
+            continue
+        if not any(row["in_stock"] for row in get_inventory(product.product_id)):
+            score -= 8  # still eligible, but behind anything buyable
+        scored.append((score, product))
+
+    scored.sort(key=lambda pair: (-pair[0], pair[1].name))
+    return [_lookup(p) for _, p in scored[:limit]]
+
+
 def shop_overview() -> ShopOverview:
     """Counts, categories, sizes and every price the shop charges.
 

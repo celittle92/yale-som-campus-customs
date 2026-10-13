@@ -31,8 +31,11 @@ from models import (
 )
 from db import (
     EmailAlreadyRegistered,
+    all_stock,
     clear_messages,
+    clear_recently_viewed,
     create_user,
+    ensure_schema,
     get_inventory,
     get_product,
     get_user_by_email,
@@ -40,11 +43,17 @@ from db import (
     image_path,
     list_products,
     recent_messages,
+    recently_viewed,
+    record_view,
     save_exchange,
     stored_messages,
 )
+from tools import similar_products
 
 logger = logging.getLogger("campus_customs")
+
+# The one additive table this app owns. Safe to call repeatedly.
+ensure_schema()
 
 app = FastAPI(
     title="Campus Customs API",
@@ -110,10 +119,17 @@ def products() -> list[dict]:
 
 
 @app.get("/api/products/{product_id}", response_model=ProductDetail)
-def product(product_id: str) -> dict:
+def product(
+    product_id: str,
+    campus_customs_session: str | None = Cookie(default=None),
+) -> dict:
     found = get_product(product_id)
     if found is None:
         raise HTTPException(status_code=404, detail="No such product")
+    # Opening a product page is the view that "recently viewed" records. Signed-in only.
+    user_id = sessions.user_id_for(campus_customs_session)
+    if user_id is not None:
+        record_view(user_id, product_id)
     return {**asdict(found), "sizes": get_inventory(product_id)}
 
 
@@ -182,6 +198,72 @@ def me(campus_customs_session: str | None = Cookie(default=None)) -> PublicUser 
     return _public_user(row) if row else None
 
 
+@app.get("/api/stock")
+def stock_map() -> dict[str, dict[str, int]]:
+    """Stock for every product and size, as `{product_id: {size: quantity}}`.
+
+    One small request lets the Products page filter by size and hide sold-out items
+    instantly in the browser, instead of 102 round trips or a server call per keystroke.
+    """
+    return all_stock()
+
+
+@app.get("/api/products/{product_id}/similar", response_model=list[ProductSummary])
+def similar(product_id: str, limit: int = 8) -> list[dict]:
+    """Products like this one, for the "You might also like" row."""
+    if get_product(product_id) is None:
+        raise HTTPException(status_code=404, detail="No such product")
+    out: list[dict] = []
+    for match in similar_products(product_id, limit):
+        full = get_product(match.product_id)
+        if full is not None:
+            out.append({k: v for k, v in asdict(full).items() if k != "search_tags"})
+    return out
+
+
+@app.post("/api/recently-viewed/{product_id}", status_code=204)
+def note_view(
+    product_id: str,
+    campus_customs_session: str | None = Cookie(default=None),
+) -> None:
+    """Record that a signed-in shopper opened a product.
+
+    Guests are a deliberate no-op: their list lives in their own browser and is never
+    sent here. See output/usability.md.
+    """
+    user_id = sessions.user_id_for(campus_customs_session)
+    if user_id is None:
+        return
+    if get_product(product_id) is None:
+        raise HTTPException(status_code=404, detail="No such product")
+    record_view(user_id, product_id)
+
+
+@app.get("/api/recently-viewed", response_model=list[ProductSummary])
+def get_recently_viewed(
+    campus_customs_session: str | None = Cookie(default=None),
+) -> list[dict]:
+    user_id = sessions.user_id_for(campus_customs_session)
+    if user_id is None:
+        return []
+    out: list[dict] = []
+    for product_id in recently_viewed(user_id):
+        found = get_product(product_id)
+        if found is not None:
+            out.append({k: v for k, v in asdict(found).items() if k != "search_tags"})
+    return out
+
+
+@app.delete("/api/recently-viewed", status_code=204)
+def delete_recently_viewed(
+    campus_customs_session: str | None = Cookie(default=None),
+) -> None:
+    user_id = sessions.user_id_for(campus_customs_session)
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Log in to manage this.")
+    clear_recently_viewed(user_id)
+
+
 def _shopper_context(user_id: int | None, page_path: str | None) -> ShopperContext:
     """Build the agent's view of the shopper, server-side.
 
@@ -198,6 +280,14 @@ def _shopper_context(user_id: int | None, page_path: str | None) -> ShopperConte
             context.first_name = row["first_name"]
             context.full_name = row["name"]
             context.email = row["email"]
+            # Names, not ids: the agent reads these, and a name is what a shopper
+            # would say. It searches to get the id back when it needs one.
+            seen = []
+            for product_id in recently_viewed(user_id):
+                found = get_product(product_id)
+                if found is not None:
+                    seen.append(found.name)
+            context.recently_viewed = seen
 
     # "/products/<id>" is the only path that carries meaning for the agent.
     if page_path and page_path.startswith("/products/"):
