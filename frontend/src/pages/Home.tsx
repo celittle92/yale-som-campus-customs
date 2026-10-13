@@ -35,13 +35,14 @@ const collections = [
 // Real catalogue photography, so the hero shows what the shop actually sells. The
 // version marker matches the one the API puts on image_url, so a browser holding the
 // old black-background copy fetches the tidied one.
-const IMAGE_VERSION = 3
+const IMAGE_VERSION = 5
 
 
 const heroImages = [
   { id: 'basic-hoodie-big-yale', label: 'Basic Hoodie Big Yale' },
   { id: '2025-yale-vs-harvard-t-shirt', label: '2025 Yale vs Harvard T-Shirt' },
   { id: 'benjamin-franklin-fleece-jacket', label: 'Benjamin Franklin Fleece Jacket' },
+  { id: 'champion-reverse-weave-crewneck', label: 'Champion Reverse Weave Crewneck' },
 ]
 
 export default function Home() {
@@ -82,29 +83,19 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Offset collage — the tallest piece leads, the others step down. */}
+        {/* A plain 2x2 of equal squares. Four products at the same scale reads as a
+            catalogue; one oversized hero image reads as a banner. */}
         <div className="animate-rise grid grid-cols-2 gap-4 [animation-delay:120ms]">
-          <Link
-            to={`/products/${heroImages[0].id}`}
-            className="group relative col-span-1 row-span-2 overflow-hidden rounded-2xl border border-line bg-sand shadow-card transition-all duration-500 hover:-translate-y-1 hover:shadow-lift"
-          >
-            <img
-              src={`/api/products/${heroImages[0].id}/image?v=${IMAGE_VERSION}`}
-              alt={heroImages[0].label}
-              className="h-full w-full object-cover object-top transition-transform duration-700 ease-[var(--ease-out-soft)] group-hover:scale-105"
-            />
-          </Link>
-          {heroImages.slice(1).map((item, i) => (
+          {heroImages.map((item) => (
             <Link
               key={item.id}
               to={`/products/${item.id}`}
-              className="group relative overflow-hidden rounded-2xl border border-line bg-sand shadow-card transition-all duration-500 hover:-translate-y-1 hover:shadow-lift"
-              style={{ marginTop: i === 0 ? '1.25rem' : undefined }}
+              className="group relative overflow-hidden rounded-2xl border border-line bg-paper shadow-card transition-all duration-500 hover:-translate-y-1 hover:shadow-lift"
             >
               <img
                 src={`/api/products/${item.id}/image?v=${IMAGE_VERSION}`}
                 alt={item.label}
-                className="aspect-square h-full w-full object-cover transition-transform duration-700 ease-[var(--ease-out-soft)] group-hover:scale-105"
+                className="aspect-square w-full object-cover transition-transform duration-700 ease-[var(--ease-out-soft)] group-hover:scale-105"
               />
             </Link>
           ))}

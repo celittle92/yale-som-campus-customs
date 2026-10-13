@@ -144,9 +144,28 @@ version used 70 and did visibly bite the hoodie. It now runs at 30, and every im
 a second, timid pass at 12 — if the two disagree about how much survived, the generous
 fill leaked and the timid result is used instead.
 
+**Then a second pass removes the halo.** The garment's edge is anti-aliased — where it
+meets the background the pixels are a blend — so the fill stops short and leaves a
+speckled outline. A cleanup pass grows the background inward a pixel at a time over dark
+pixels only, eating the blend and stopping at the garment.
+
+**That pass had a bug worth recording.** The first version grew from *any white pixel*,
+which meant a garment's own white lettering seeded it: the "YALE CREW" logo on a navy
+hoodie chewed holes in itself, and white trim speckled the sleeves. Measured, it added
+1,274 white pixels *inside* the garment. It now grows strictly from the mask of pixels
+the flood fill actually changed, computed by diffing before and after — so interior white
+can never seed it. Re-measured: zero change inside the garment.
+
+The lesson is general: "the background" and "pixels that happen to be white" are not the
+same set, and a product photo is exactly where that difference bites.
+
+**The hero is a 2×2 of equal squares.** An earlier version gave one product a
+double-height tile; at that scale it read as a banner rather than a shop, and the crop cut
+the garment. Four products at one size reads as a catalogue.
+
 **The supplied images are never modified.** Originals are read-only; results are cached in
-a gitignored directory, and image URLs carry a version marker so a browser holding the old
-black-background copy fetches the new one.
+a gitignored directory, and image URLs carry a version marker so a browser holding an old
+copy fetches the new one.
 
 ## One content fix worth recording
 

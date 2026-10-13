@@ -22,7 +22,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 logger = logging.getLogger("campus_customs.images")
 
@@ -75,6 +75,45 @@ def _filled(image: Image.Image, tolerance: int) -> Image.Image:
     return out
 
 
+def _background_mask(original: Image.Image, filled: Image.Image) -> Image.Image:
+    """Exactly which pixels the flood fill changed — i.e. the background.
+
+    Derived by comparing before and after rather than by looking for white, which is the
+    distinction that matters: a garment's own white lettering is white too.
+    """
+    diff = ImageChops.difference(original, filled).convert("L")
+    return diff.point(lambda v: 255 if v > 0 else 0).convert("L")
+
+
+def _clean_fringe(
+    image: Image.Image, background: Image.Image, rounds: int = 2
+) -> Image.Image:
+    """Remove the dark halo the flood fill cannot reach.
+
+    A photo's edge is anti-aliased: where garment meets background the pixels are a
+    blend of the two. The fill stops at them, leaving a speckled outline.
+
+    This grows the **background region** inward a pixel at a time, over dark pixels
+    only, so it eats the blended edge and stops at the garment.
+
+    Growing from the background mask rather than from "anything white" is the whole
+    point. An earlier version grew from white pixels, which meant a garment's own white
+    lettering — "YALE CREW" on a navy hoodie — seeded the growth and chewed holes in its
+    own logo. Interior white can never seed this version, because it was never part of
+    the background.
+    """
+    white_fill = Image.new("RGB", image.size, WHITE)
+    for _ in range(rounds):
+        grey = image.convert("L")
+        dark = grey.point(lambda v: 255 if v < 120 else 0).convert("L")
+        grown = background.filter(ImageFilter.MaxFilter(3))
+        fringe = ImageChops.darker(grown, dark)
+        image.paste(white_fill, mask=fringe.convert("1"))
+        # Anything just cleaned becomes background for the next round.
+        background = ImageChops.lighter(background, fringe)
+    return image
+
+
 def _coverage(image: Image.Image) -> float:
     """Percentage of the frame that is not near-white, i.e. still garment."""
     w, h = image.size
@@ -114,6 +153,8 @@ def normalise(source: Path, product_id: str) -> Path:
         if _coverage(timid) - _coverage(normal) > LEAK_TOLERANCE_PP:
             logger.info("fill leaked on %s; using the conservative pass", product_id)
             normal = timid
+
+        normal = _clean_fringe(normal, _background_mask(image, normal))
 
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
         normal.save(cached, "JPEG", quality=90, optimize=True)

@@ -803,6 +803,24 @@ recorded colours.
    headings. Each tier now uses the optical size it is drawn for, and the quirky `WONK`
    alternates are off.
 
+2. **What was lacking:** the hero gave one product a double-height tile, and the image
+   cleanup had introduced a worse problem than the one it solved.
+
+   > I don't like this - the hoodie pic is too large. Can we do a 2x2 instead?
+   >
+   > whatever you did to the images kind of messed up the white 'yale' and text on them -- the logos are so distorted
+
+   Hero is now a 2×2 of four equal squares — at one scale it reads as a catalogue rather
+   than a banner.
+
+   The logo damage was my bug, not the source. The halo-removal pass grew outward from
+   *any white pixel*, so a garment's own white lettering seeded it: "YALE CREW" chewed
+   holes in itself and white trim speckled the sleeves. Measured, it had added 1,274
+   white pixels inside the garment. It now grows strictly from the mask of pixels the
+   flood fill actually changed — computed by diffing the image before and after — so
+   interior white can never seed it. Re-measured at zero change inside the garment, and
+   confirmed visually on the Crew Left Chest Hoodie she screenshotted.
+
 ---
 
 <!--
