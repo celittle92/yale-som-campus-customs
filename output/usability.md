@@ -1,6 +1,6 @@
 # Usability improvements
 
-Six improvements to the Campus Customs site: three on the front end, three in the
+Seven improvements to the Campus Customs site: three on the front end, four in the
 backend and agent. Written before the work, and updated with measured results as each
 landed.
 
@@ -17,6 +17,7 @@ landed.
 3. [Recently viewed](#3-recently-viewed)
 4. [A faster assistant](#4-a-faster-assistant)
 6. [Grounded-output validation](#6-grounded-output-validation)
+7. [Typo-tolerant search](#7-typo-tolerant-search)
 
 Then: [where to find each one](#where-to-find-each-one-in-the-running-app) and
 [two judgement calls](#two-judgement-calls-worth-stating).
@@ -223,6 +224,56 @@ silently.
 
 ---
 
+## 7. Typo-tolerant search
+
+**What I added.** `search_products` now corrects misspellings against the catalogue's own
+vocabulary, using `difflib` over the words that actually appear in product names, tags,
+colours, categories and cuts. Before, a single typo returned nothing:
+
+| Typed | Before | Now |
+|---|---|---|
+| `crewnek` | 0 results | 6, read as "crewneck" |
+| `hoddie` | 0 results | 6, read as "hoodie" |
+| `buldog` | 0 results | 6, read as "bulldog" |
+| `champoin` | 0 results | 4, read as "champion" |
+| `quater zip` | 0 results | 6, read as "quarter zip" |
+
+The result carries `corrections`, so the agent tells the shopper what it searched for
+instead of silently changing their words.
+
+**Why it helps — and why this is an accuracy fix, not just a convenience.** A search that
+returns nothing makes the agent say *"we don't carry that"*. For `crewnek` that sentence
+is **false**: we carry 29 of them. The typo turned a spelling slip into the assistant
+making an untrue statement about our own inventory. Fixing the search fixes the lie.
+
+For the shopper it removes a dead end at the worst moment — they were telling us exactly
+what they wanted. For the business, a zero-result search is one of the highest-exit
+moments in any shop.
+
+**Two guards against the opposite failure**, which would be worse:
+
+1. **Correction only to words that exist in this catalogue**, and only when the match is
+   close. `dres` is not turned into anything, because we sell no dresses — it returns
+   nothing, and "we do not carry that" is then *true*. Fuzzy matching must not become
+   "find something, anything". Short words are left alone entirely, so `red` can never
+   become `read`.
+
+2. **Unmatched words are reported.** Scoring is OR-based so natural phrasing still works,
+   which means one word can match while another matches nothing — and that is exactly
+   your "red dress" example. The result now carries `unmatched_terms`, and the agent is
+   told to lead with it. Live:
+
+   > **"do you have a red dress?"**
+   > "We do not carry dresses. I found a couple of items with red in the design instead,
+   > if that helps."
+
+   Without that, it would have shown red t-shirts as though they answered the question.
+
+Verified live with a typo too: *"do you have any navy crewnek sweatshirts?"* returned four
+navy crewnecks at $58.00, and the reply told the shopper which word it had re-read.
+
+---
+
 ## Where to find each one in the running app
 
 | Improvement | Where |
@@ -233,6 +284,7 @@ silently.
 | Faster assistant | The chat panel — replies now land in about 3.5s instead of 4.9s |
 | Inline error validation | **Log in** and **Create Account** — type an email without an `@` |
 | Grounded-output validation | Invisible by design: it runs on every chat answer. Evidence in the table above. |
+| Typo-tolerant search | Ask the chat for a "crewnek" or a "hoddie" |
 
 Verified live, signed in as the test account:
 

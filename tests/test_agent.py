@@ -98,10 +98,10 @@ check("every LookupError carries a suggestion",
           tools.get_product_details("x"), tools.check_size_availability("basic-hoodie-big-yale", "Q"),
           tools.browse_category("pantsuit"), tools.find_products_by_price()]))
 check("empty search returns nothing rather than everything",
-      tools.search_products("") == [])
+      tools.search_products("").products == [])
 
 print("\nTools return typed results, resolvable ids, and real prices")
-hits = tools.search_products("navy crewneck")
+hits = tools.search_products("navy crewneck").products
 check("search returns ProductLookup objects", all(isinstance(h, ProductLookup) for h in hits))
 check("every returned id resolves to a product",
       all(isinstance(tools.get_product_details(h.product_id), ProductDetails) for h in hits))
@@ -179,6 +179,29 @@ check("a run with NO deps falls back to guest rather than crashing",
 check("instructions mention the context", "product_match_label" in load_prompt())
 check("the instructions tell the agent the context exists",
       "Who you are talking to, and where they are" in load_prompt())
+
+print("\nTypo-tolerant search")
+for typo, fixed in [("crewnek", "crewneck"), ("hoddie", "hoodie"), ("buldog", "bulldog"),
+                    ("champoin", "champion"), ("quater", "quarter")]:
+    r = tools.search_products(typo)
+    check(f"{typo!r} finds products and reports the correction to {fixed!r}",
+          len(r.products) > 0 and r.corrections.get(typo) == fixed)
+
+check("a correctly spelled query is not 'corrected'",
+      tools.search_products("navy hoodie").corrections == {})
+check("something we genuinely do not sell still returns nothing",
+      len(tools.search_products("xylophone").products) == 0)
+check("a word for something we do not sell is NOT fuzzed into something we do",
+      "dress" not in tools.search_products("dres").corrections
+      and len(tools.search_products("dres").products) == 0)
+rd = tools.search_products("red dress")
+check("'red dress' reports 'dress' as unmatched rather than passing red items off as dresses",
+      "dress" in rd.unmatched_terms)
+check("matched words are not listed as unmatched", "red" not in rd.unmatched_terms)
+check("short words are left alone, so 'red' is never turned into 'read'",
+      tools.search_products("red").corrections == {})
+check("the instructions explain both signals",
+      "unmatched_terms" in load_prompt() and "corrections" in load_prompt())
 
 print("\nOutput validator: answers are checked against the catalogue")
 from pydantic_ai import ModelRetry  # noqa: E402

@@ -95,6 +95,28 @@ class SizeCheck(BaseModel):
     )
 
 
+class SearchResult(BaseModel):
+    """Search results, plus any spelling the search had to correct to find them."""
+
+    products: list[ProductLookup]
+    interpreted_as: str = Field(
+        description="The query actually searched for, after correcting typos."
+    )
+    corrections: dict[str, str] = Field(
+        default_factory=dict,
+        description="Words that were corrected, as typed -> used. When this is not "
+        "empty, tell the shopper what you searched for, e.g. \"showing crewnecks\". "
+        "Never pretend they typed it correctly.",
+    )
+    unmatched_terms: list[str] = Field(
+        default_factory=list,
+        description="Words from the query that match nothing in the catalogue. These "
+        "results do NOT satisfy them. If someone asks for a 'red dress' and 'dress' is "
+        "here, say we do not carry dresses before showing red items — do not present "
+        "these as what they asked for.",
+    )
+
+
 class CategoryListing(BaseModel):
     category: str
     total_in_category: int = Field(

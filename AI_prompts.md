@@ -711,6 +711,27 @@ bought only in ways that cannot touch correctness.
 
    Added the speed framing she asked for, and kept the no-cookie decision.
 
+2. **What was lacking:** still worried about losing credit on the backend criterion.
+
+   > What about for a backend enhancement we did something like :
+   > Smart Fuzzy-Matching Search Engine (Usability: Search Flexibility) [...]
+   > It handles user typos and misspellings. If a shopper types "res dress" or "red dres", a basic backend returns zero results (a massive usability dead-end).
+
+   A better fit than the previous suggestion, and for a reason worth naming: a search
+   that returns nothing makes the agent say "we don't carry that", which for `crewnek`
+   is a **false statement about our own inventory**. Fixing it is an accuracy fix.
+
+   Confirmed the problem first — `crewnek`, `hoddie`, `buldog`, `champoin` all returned
+   zero. Added correction against the catalogue's own vocabulary using `difflib`, with
+   two guards against the opposite failure: a term is only corrected to a word that
+   exists here, so `dres` still returns nothing because we sell no dresses; and short
+   words are left alone so `red` never becomes `read`.
+
+   Her "red dress" example exposed a second flaw that was already there: OR-based scoring
+   meant "red" matched and the shopper would be shown red t-shirts as dresses. The result
+   now reports `unmatched_terms` and the agent leads with it. Live: *"We do not carry
+   dresses. I found a couple of items with red in the design instead, if that helps."*
+
 ---
 
 <!--

@@ -10,6 +10,10 @@ instead of producing a quietly wrong answer in the chat.
 """
 from __future__ import annotations
 
+import difflib
+import re
+from functools import lru_cache
+
 from db import get_inventory, get_product, list_products
 from models import (
     CategoryListing,
@@ -17,6 +21,7 @@ from models import (
     PriceSearchResult,
     ProductDetails,
     ProductLookup,
+    SearchResult,
     ShopOverview,
     SizeCheck,
     SizeStock,
@@ -73,18 +78,91 @@ def _lookup(product) -> ProductLookup:
     )
 
 
-def search_products(query: str, limit: int = MAX_RESULTS) -> list[ProductLookup]:
-    """Find products by the words a shopper uses.
+# --- Typo-tolerant search ----------------------------------------------------------
+#
+# A one-character typo used to return nothing, which made the agent say "we do not carry
+# that" about products we do carry. A false statement about our own inventory is an
+# accuracy failure, not just a usability one.
+#
+# The correction is deliberately conservative, because the opposite failure is worse: if
+# fuzzy matching stretched far enough to turn a word for something we genuinely do not
+# sell into something we do, the agent would confidently show the wrong thing. So a term
+# is only corrected to a word that actually appears in this catalogue, and only when it
+# is a close match. "dres" finds nothing, because we sell no dresses — and that honest
+# empty result is the right answer.
+
+MIN_FUZZY_LENGTH = 4  # shorter words are too easy to turn into a different real word
+FUZZY_CUTOFF = 0.78
+
+
+@lru_cache(maxsize=1)
+def search_vocabulary() -> frozenset[str]:
+    """Every word that appears anywhere searchable in the catalogue."""
+    words: set[str] = set()
+    for product in list_products():
+        fields = [
+            product.name,
+            product.garment_type,
+            canonical_category(product.garment_type),
+            " ".join(product.colors),
+            " ".join(product.search_tags),
+        ]
+        for text in fields:
+            for word in re.split(r"[^a-z0-9]+", text.lower()):
+                if len(word) > 2:
+                    words.add(word)
+    return frozenset(words)
+
+
+def correct_terms(terms: list[str]) -> tuple[list[str], dict[str, str]]:
+    """Fix typos against the catalogue's own vocabulary.
+
+    Returns the terms to search with, and a map of what was changed. A term already in
+    the vocabulary is left alone; one with no close match is also left alone, so a
+    genuine "we do not sell that" still returns nothing.
+    """
+    vocabulary = search_vocabulary()
+    used: list[str] = []
+    corrections: dict[str, str] = {}
+    for term in terms:
+        if term in vocabulary or len(term) < MIN_FUZZY_LENGTH:
+            used.append(term)
+            continue
+        # A substring hit means it is a real prefix like "hood" — not a typo.
+        if any(term in word for word in vocabulary):
+            used.append(term)
+            continue
+        close = difflib.get_close_matches(term, vocabulary, n=1, cutoff=FUZZY_CUTOFF)
+        if close:
+            corrections[term] = close[0]
+            used.append(close[0])
+        else:
+            used.append(term)
+    return used, corrections
+
+
+def search_products(query: str, limit: int = MAX_RESULTS) -> SearchResult:
+    """Find products by the words a shopper uses. Tolerates typos.
 
     Matches the product name, its curated search tags, its category and cut, the colours
-    in its design, and its description. Returns at most `limit` products, best match
-    first. An empty list means we do not carry it — say so rather than guessing.
+    in its design, and its description. Misspellings are corrected against the
+    catalogue's own vocabulary, and any correction is reported in `corrections` — tell
+    the shopper what you searched for when that happens.
+
+    Empty `products` means we genuinely do not carry it. Say so rather than guessing.
     """
-    terms = [t for t in query.lower().split() if len(t) > 1]
-    if not terms:
-        return []
+    raw = [t for t in query.lower().split() if len(t) > 1]
+    if not raw:
+        return SearchResult(products=[], interpreted_as=query, corrections={})
+
+    terms, corrections = correct_terms(raw)
 
     scored: list[tuple[int, object]] = []
+    # Scoring is OR-based so natural phrasing still finds things, which means a query
+    # can match on one word while another matches nothing at all. Tracking that is what
+    # stops "red dress" being answered with red t-shirts as though they were dresses.
+    matched_terms: set[str] = set()
+
     for product in list_products():
         fields = {
             "name": product.name.lower(),
@@ -97,22 +175,31 @@ def search_products(query: str, limit: int = MAX_RESULTS) -> list[ProductLookup]
         # Weighted so a name or tag hit beats an incidental word in the description.
         score = 0
         for term in terms:
+            hit = 0
             if term in fields["name"]:
-                score += 5
+                hit += 5
             if term in fields["tags"]:
-                score += 4
+                hit += 4
             if term in fields["category"] or term in fields["type"]:
-                score += 3
+                hit += 3
             if term in fields["colors"]:
-                score += 2
+                hit += 2
             if term in fields["description"]:
-                score += 1
+                hit += 1
+            if hit:
+                matched_terms.add(term)
+            score += hit
         if score:
             scored.append((score, product))
 
     scored.sort(key=lambda pair: (-pair[0], pair[1].name))
     capped = max(1, min(limit, MAX_RESULTS))
-    return [_lookup(product) for _, product in scored[:capped]]
+    return SearchResult(
+        products=[_lookup(product) for _, product in scored[:capped]],
+        interpreted_as=" ".join(terms),
+        corrections=corrections,
+        unmatched_terms=[t for t in terms if t not in matched_terms],
+    )
 
 
 def browse_category(category: str, limit: int = MAX_RESULTS) -> CategoryListing | LookupError:
