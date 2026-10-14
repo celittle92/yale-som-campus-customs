@@ -15,26 +15,44 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
-REPO_DIR = Path(__file__).resolve().parent.parent
-# The supplied data sits outside the repo so it cannot be committed by accident.
-DEFAULT_DATA_DIR = REPO_DIR.parent / "data hw4"
+PROJECT_DIR = Path(__file__).resolve().parent.parent
 DB_NAME = "campus_customs.db"
 IMAGE_DIR_NAME = "products"
+
+# The supplied data sits outside the repository so it cannot be committed by accident,
+# which means its location depends on where someone unpacked it. Rather than hard-code a
+# number of levels to climb — which broke once already when the project moved a level
+# deeper — look for it in each ancestor of the project folder, nearest first, accepting
+# either a folder called "data hw4" or the database sitting directly in that ancestor.
+DATA_DIR_NAME = "data hw4"
+SEARCH_DEPTH = 3
 
 # Size order is fixed by the catalogue; sorting alphabetically would read as L, M, S, XL.
 SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL"]
 
 
+def _candidate_data_dirs() -> list[Path]:
+    ancestors = [PROJECT_DIR, *PROJECT_DIR.parents[:SEARCH_DEPTH]]
+    return [base / name for base in ancestors for name in (DATA_DIR_NAME, ".")]
+
+
 @lru_cache(maxsize=1)
 def data_dir() -> Path:
     configured = os.getenv("CAMPUS_CUSTOMS_DATA")
-    path = Path(configured).expanduser() if configured else DEFAULT_DATA_DIR
-    if not (path / DB_NAME).is_file():
-        raise RuntimeError(
-            f"{DB_NAME} not found in {path}. Set CAMPUS_CUSTOMS_DATA to the folder that "
-            f"holds {DB_NAME} and {IMAGE_DIR_NAME}/."
-        )
-    return path.resolve()
+    if configured:
+        candidates = [Path(configured).expanduser()]
+    else:
+        candidates = _candidate_data_dirs()
+
+    for path in candidates:
+        if (path / DB_NAME).is_file():
+            return path.resolve()
+
+    looked = "\n  ".join(str(p) for p in candidates)
+    raise RuntimeError(
+        f"{DB_NAME} not found. Set CAMPUS_CUSTOMS_DATA to the folder that holds "
+        f"{DB_NAME} and {IMAGE_DIR_NAME}/. Looked in:\n  {looked}"
+    )
 
 
 def connect() -> sqlite3.Connection:

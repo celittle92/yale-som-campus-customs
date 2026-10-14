@@ -1,35 +1,22 @@
-# This project is pushed to a PUBLIC repo. Nothing secret and nothing the assignment
-# forbids committing may be tracked here.
+# This repository is PUBLIC. Nothing secret and nothing the assignment forbids
+# committing may be tracked here. hw4/.gitignore covers the project itself; these
+# patterns protect the repository root, where the data pack is meant to be unpacked.
 
 # Secrets
 .env
 .env.*
 !.env.example
+*.pem
+*.key
 
-# The assignment forbids committing the database or the product images.
-# They live in the workspace-root "data hw4/" folder; these patterns are belt-and-braces
-# in case a copy is ever made inside the project.
+# The assignment forbids committing the database or the product images. The README asks
+# you to unpack them here, beside hw4/, so they are ignored here by name as well.
+data hw4/
 *.db
 *.sqlite
 *.sqlite3
-data/
 products/
-
-# Environments and dependencies
-.venv/
-venv/
-node_modules/
-__pycache__/
-*.py[cod]
-
-# Generated, white-background copies of the product photos
-.image-cache/
-
-# Build output
-dist/
-build/
-.vite/
-coverage/
 
 # OS cruft
 .DS_Store
+Thumbs.db

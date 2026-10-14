@@ -947,6 +947,59 @@ model, and how to run both halves.
 
 ---
 
+## Problem 13: Push to GitHub and submit the URL
+
+### Prompt
+
+> Problem 13: Push to GitHub and submit the URL
+>
+> the hw should be in folder hw4 (we have this) and it should be pushed to a PUBLIC GitHub repo. I'll need to submit the repo for the homework. The .env, campus_customs.db and product images do NOT need to be in the repo. Use .gitignore for that. Include .env.example with placeholders only.
+>
+> I've attached a screenshot showing the expected file layout. The text that is cut out fully reads "# FastAPI app - run with: uvicorn main:app  --reload --port 8000
+>
+> The agent itself is four files under backend/
+>
+> * prompts/prompt.md
+> * agent.py
+> * tools.py
+> * models.py
+>
+> Finally README.md needs to explain how to run the front end and back end after plaxing the data pack.
+
+Pushed to **https://github.com/celittle92/yale-som-campus-customs**, public.
+
+**One thing needed deciding first.** The `hw4` folder had been its own git repo, so pushing
+it would have put `AI_prompts.md`, `backend/` and `output/` at the repo root — no folder
+called `hw4` anywhere in the clone, which is not what the screenshot shows. Christine chose
+the literal reading, so the repository root now holds exactly one thing, `hw4/`, and the
+tree matches the screenshot line for line.
+
+That meant moving all 60 files a level deeper. Git recorded every one as a rename, so the
+history is intact. Three things assumed the old depth and were fixed:
+
+- `db.py` found the data pack by climbing a fixed number of levels. It now **searches each
+  ancestor folder** for `data hw4/`, so the same code works whether the pack sits beside
+  `hw4/`, beside the repo, or one further up — and the error message lists everywhere it
+  looked. `CAMPUS_CUSTOMS_DATA` still overrides it.
+- `tests/test_agent.py` had its own hard-coded copy of that path. It now asks
+  `db.data_dir()`, so there is one source of truth rather than two.
+- The run commands and tooling paths in `CLAUDE.md` and the course workspace.
+
+**Nothing forbidden is tracked**: `git ls-files` returns 62 files with no `.env`, no
+`.db`, and no product image. `.env.example` holds variable names only. Verified by pattern
+match before the first push, not by trusting `.gitignore`.
+
+**`README.md` was rewritten** around the order someone actually does things: get the data
+pack and where exactly to put it, add the key, run the backend, run the front end, check
+the health endpoint. It also carries the file layout, the full API table, and the offline
+test commands. A short second README at the repo root points into `hw4/`, so the GitHub
+landing page is not a bare folder listing.
+
+After the move: all 142 offline checks pass, the site serves 102 products, and the health
+endpoint reports `gpt-5.6-luna`.
+
+---
+
 <!--
 Template for the next problem. Copy below this line and replace N and the bracketed text.
 

@@ -21,7 +21,7 @@ get price and stock answers that come from the supplied database rather than fro
 | Main model | `gpt-5.6-luna` (`OPENAI_MODEL`); 5.6 or 6 series, with a stronger model available for harder agent steps |
 | Runtime prompts | `../prompts/<name>.md`, loaded at runtime; never inlined in Python |
 | Submission | pushed to a public GitHub repo; the repo URL goes on Canvas |
-| Pre-submission check | `python3 check_submission.py hw4` (offline, no API calls) |
+| Pre-submission check | `check_submission.py` in the course workspace, not in this repo (offline, no API calls) |
 
 ## Contents
 
@@ -1687,7 +1687,7 @@ machine holds.
 .venv/bin/python tests/test_agent.py     # 83 checks — prompt, tools, validation, history
 .venv/bin/python tests/test_auth.py      # 19 checks — hashing, salts, signup/login parity
 .venv/bin/python tests/test_audit.py     # 40 checks — append-only, redaction, stop reasons
-python3 check_submission.py hw4          # from the workspace root
+.venv/bin/python ../../check_submission.py .   # course workspace only; not in this repo
 ```
 
 All three suites use PydanticAI's `TestModel` and touch no network. **No check in this

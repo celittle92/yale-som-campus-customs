@@ -110,7 +110,13 @@ check("prices are among the seven real price points",
 
 print("\nStock lookups agree with the database (no invented quantities)")
 import sqlite3  # noqa: E402
-con = sqlite3.connect(f"file:{ROOT.parent / 'data hw4' / 'campus_customs.db'}?mode=ro", uri=True)
+
+# Ask the app where the data is rather than hard-coding a path. This check exists to
+# compare the tools' answers against the raw table, so it must read the same file the
+# tools read — and a second copy of the path is a second thing to get wrong, as it was
+# when the project moved a folder deeper.
+from db import DB_NAME, data_dir  # noqa: E402
+con = sqlite3.connect(f"file:{data_dir() / DB_NAME}?mode=ro", uri=True)
 truth = {
     (pid, size): qty
     for pid, size, qty in con.execute("select product_id, size, quantity from inventory")
