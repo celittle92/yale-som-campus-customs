@@ -17,6 +17,7 @@ Coursework for Yale SOM, AI Foundations, Homework 4.
 | `AI_prompts.md` | The prompt log for the assignment, one section per problem |
 | `output/harness.md` | The engineering record: data model, decisions, verification |
 | `output/app_check.html` | Screenshots of the running site, with what each one proves. Open it in a browser. |
+| `output/audit_trail.json` | Append-only record of every agent turn: tools called, retries, and how it ended |
 
 ## The data is not in this repository
 

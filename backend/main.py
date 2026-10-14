@@ -8,15 +8,17 @@ from __future__ import annotations
 
 import logging
 import sqlite3
+import time
 from dataclasses import asdict
 
 from fastapi import Cookie, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from pydantic_ai.exceptions import ModelHTTPError
+from pydantic_ai.exceptions import ModelHTTPError, UsageLimitExceeded
 
+import audit
 import sessions
-from agent import MAX_HISTORY_MESSAGES, build_agent, model_name
+from agent import LOOP_LIMITS, MAX_HISTORY_MESSAGES, build_agent, model_name
 from auth import hash_password, verify_password
 from models import (
     ChatHistoryMessage,
@@ -352,10 +354,31 @@ async def chat(
     history = recent_messages(user_id, MAX_HISTORY_MESSAGES) if user_id else []
     deps = _shopper_context(user_id, request.page_path)
 
+    # One id ties this turn's audit entries together. The trail is written on every exit
+    # path below, including the failures — a turn that broke is the one worth recording.
+    run_id = audit.new_run_id()
+    started = time.perf_counter()
+
+    def write_audit(stop_reason: str, result=None) -> None:
+        audit.record_exchange(
+            run_id,
+            stop_reason=stop_reason,
+            signed_in=user_id is not None,
+            question_chars=len(request.message),
+            ms=round((time.perf_counter() - started) * 1000),
+            result=result,
+        )
+
     try:
         agent = build_agent()
-        result = await agent.run(request.message, message_history=history, deps=deps)
+        result = await agent.run(
+            request.message,
+            message_history=history,
+            deps=deps,
+            usage_limits=LOOP_LIMITS,
+        )
         answer = result.output
+        write_audit("ok", result)
         # Token usage per exchange, so spend is measurable rather than guessed at.
         # One shopper question is several model calls: one to pick a tool, another to
         # answer once the result comes back. The instructions and tool schemas are
@@ -379,6 +402,7 @@ async def chat(
         # tokens, since nothing was generated.
         if "content_filter" in str(exc.body or "").lower():
             logger.info("provider content filter refused a message")
+            write_audit("content_filter")
             # Deliberately NOT saved to chat_messages. A filtered message would be
             # replayed as context on every later turn, so storing it would re-trigger
             # the filter and break the conversation from then on.
@@ -391,12 +415,27 @@ async def chat(
                 saved=False,
             )
         logger.exception("the model request failed")
+        write_audit("model_error")
         raise HTTPException(
             status_code=503,
             detail="The shop assistant is unavailable right now. Please try again.",
         ) from exc
+    except UsageLimitExceeded as exc:
+        # The turn hit a ceiling in LOOP_LIMITS: too many model calls, too many lookups,
+        # or too many tokens. Stop and say so rather than letting it keep spending.
+        logger.warning("a chat turn hit a loop limit: %s", exc)
+        write_audit("usage_limit")
+        return ChatReply(
+            reply=(
+                "I could not work that one out. Try asking about one item or one size at "
+                "a time, or come and see us at 57 Broadway."
+            ),
+            products=[],
+            saved=False,
+        )
     except Exception as exc:  # noqa: BLE001 - surfaced as one clean line, logged in full
         logger.exception("chat failed")
+        write_audit("error")
         raise HTTPException(
             status_code=503,
             detail="The shop assistant is unavailable right now. Please try again.",

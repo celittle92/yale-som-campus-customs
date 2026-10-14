@@ -17,18 +17,12 @@ from pathlib import Path
 from pydantic_ai import Agent, ModelRetry, RunContext
 from pydantic_ai.models.openai import OpenAIResponsesModel, OpenAIResponsesModelSettings
 from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.usage import UsageLimits
 
 from app_config import DEFAULT_OPENAI_MODEL, build_portkey_client, load_settings
 from db import get_product, list_products
 from models import ChatAnswer, ShopperContext
-from tools import (
-    browse_category,
-    check_size_availability,
-    find_products_by_price,
-    get_product_details,
-    search_products,
-    shop_overview,
-)
+from tools import CATALOGUE_TOOLS
 
 HERE = Path(__file__).resolve().parent
 PROMPT_PATH = HERE / "prompts" / "prompt.md"
@@ -58,6 +52,21 @@ LATENCY_SETTINGS = OpenAIResponsesModelSettings(
     max_tokens=800,
     # Several lookups in one turn go out together rather than one after another.
     parallel_tool_calls=True,
+)
+
+# Hard limits on a single turn, enforced by PydanticAI rather than by the instructions.
+#
+# A tool-calling loop can in principle keep going: call a tool, read the result, decide it
+# needs another, repeat. The instructions ask for restraint; this makes it a rule. A
+# normal turn is two or three model requests and one to three tool calls, so these ceilings
+# are roughly double the usual and are only reached by something that has gone wrong.
+#
+# Exceeding one raises `UsageLimitExceeded`, which the chat route turns into an honest
+# "I could not work that out" rather than an endless, billable loop.
+LOOP_LIMITS = UsageLimits(
+    request_limit=6,       # model calls per shopper message
+    tool_calls_limit=10,   # database lookups per shopper message
+    total_tokens_limit=40_000,
 )
 
 
@@ -142,14 +151,7 @@ def create_agent(model) -> Agent[ShopperContext, ChatAnswer]:
 
     # Tools read the catalogue and cost nothing to call. The model may call several in
     # one turn; each is a database read, not a model call.
-    for tool in (
-        search_products,
-        browse_category,
-        get_product_details,
-        check_size_availability,
-        find_products_by_price,
-        shop_overview,
-    ):
+    for tool in CATALOGUE_TOOLS:
         agent.tool_plain(tool)
 
     return agent

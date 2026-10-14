@@ -443,3 +443,19 @@ def shop_overview() -> ShopOverview:
         sizes_carried=SIZES,
         price_points_usd=sorted({p.price for p in products}),
     )
+
+
+# The read-only catalogue tools the agent is given, in the order they are registered.
+# One list, used by `agent.py` to register them and by `audit.py` to tell a real lookup
+# apart from PydanticAI's internal `final_result` output tool — so the two can never
+# disagree about what counts as a tool. `similar_products` is deliberately absent: the
+# API calls it directly for the recommendation row, and the agent never does.
+CATALOGUE_TOOLS = (
+    search_products,
+    browse_category,
+    get_product_details,
+    check_size_availability,
+    find_products_by_price,
+    shop_overview,
+)
+CATALOGUE_TOOL_NAMES = frozenset(tool.__name__ for tool in CATALOGUE_TOOLS)

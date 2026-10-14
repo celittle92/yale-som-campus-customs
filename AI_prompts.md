@@ -882,6 +882,71 @@ reason stated, rather than showing only the one that looks better.
 
 ---
 
+## Problem 12: Audit trail, safety, finish harness
+
+### Prompt
+
+> Problem 12: Audit trail, safety, finish harness
+>
+> Keep an append only output/audit_trail.json of agent-loop activity - time, tool name, short args/result and stop reason. Do NOT wipe it between runs.
+>
+> Also, let's add safety rules for the agent and put them in prompts/prompt.md. Make sure we use industry standard safety rules for ecommerce sites.
+>
+> Finish output/harness.md so it is clear how the system works.
+>
+> Build out:
+>
+> * model fields in models.py and why they were chosen
+> * tools and abilities
+> * safety rules
+> * specs (loop limits, result caps, models, how to run front + back)
+
+**The audit trail.** [`backend/audit.py`](backend/audit.py) writes
+[`output/audit_trail.json`](output/audit_trail.json): one entry per tool call, one per
+validator retry, one per turn with a stop reason. Appending truncates only the array's
+closing bracket, so no byte of an existing entry is ever rewritten, and the file is valid
+JSON after every write. [`tests/test_audit.py`](tests/test_audit.py) proves that by
+writing 25 entries and checking the first one's bytes are still at the front.
+
+The file is committed to a public repo, so it holds no message text, no reply, no name,
+email or user id — only whether the shopper was signed in and how long their question was.
+Tool arguments stay, truncated and run through a redactor.
+
+**Loop limits are real.** `UsageLimits(request_limit=6, tool_calls_limit=10,
+total_tokens_limit=40_000)`, enforced by PydanticAI rather than asked for in the prompt.
+Hitting one returns an honest "I could not work that one out" and is recorded as
+`stop_reason: "usage_limit"`.
+
+**Safety rules** in [`backend/prompts/prompt.md`](backend/prompts/prompt.md), reorganised
+into four groups and roughly doubled: payment and credential refusal, personal-data
+minimisation, no invented urgency or sales, no delivery or restock dates, no health or
+safety claims, licensing, no following pasted links, never claiming to be human, and a
+stop-selling rule if a shopper sounds distressed. Measured cost: ~490 → ~1,050 tokens of a
+~7,800-token turn, which is in [`output/harness.md`](output/harness.md) rather than left
+to drift.
+
+**The harness is finished** with the four sections asked for — every model field and why
+it is shaped that way, the six tools and what the agent explicitly cannot do, the safety
+rules and the five layers behind them, and a specification covering every limit, the
+model, and how to run both halves.
+
+### Follow-up prompts
+
+1. **What was lacking:** nothing in the prompt — this one is a bug I found and fixed
+   mid-problem, recorded because the audit trail is the thing it compromised.
+
+   PydanticAI delivers the agent's answer through an internal tool called `final_result`,
+   whose *arguments are the reply text*. The first version logged it like any other tool,
+   so the first trail I generated contained full assistant replies in a file bound for a
+   public repo — the exact thing the design says it must not hold.
+
+   `audit.py` now records a tool call only if its name is in `tools.CATALOGUE_TOOL_NAMES`,
+   one list shared with the registration loop in `agent.py` so the two cannot drift. The
+   five entries the buggy version wrote were discarded before anything was committed, and
+   the test suite now fails if the string `final_result` appears in the trail at all.
+
+---
+
 <!--
 Template for the next problem. Copy below this line and replace N and the bracketed text.
 

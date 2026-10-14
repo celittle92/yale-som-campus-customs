@@ -51,6 +51,9 @@
     "output/app_check_images/chat-search-cards.png",
     "output/app_check_images/filter.png",
     "output/app_check_images/filter-size.png",
-    "output/app_check_images/recommendations.png"
+    "output/app_check_images/recommendations.png",
+    "backend/audit.py",
+    "tests/test_audit.py",
+    "output/audit_trail.json"
   ]
 }
