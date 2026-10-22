@@ -22,9 +22,13 @@ IMAGE_DIR_NAME = "products"
 # The supplied data sits outside the repository so it cannot be committed by accident,
 # which means its location depends on where someone unpacked it. Rather than hard-code a
 # number of levels to climb — which broke once already when the project moved a level
-# deeper — look for it in each ancestor of the project folder, nearest first, accepting
-# either a folder called "data hw4" or the database sitting directly in that ancestor.
-DATA_DIR_NAME = "data hw4"
+# deeper — look for it in each ancestor of the project folder, nearest first.
+#
+# "data" comes first because that is the folder name the assignment itself uses, so
+# anyone who follows the layout in the brief lands on it immediately. "data hw4" is the
+# name this workspace happens to use. The bare "." covers a database dropped straight
+# into one of those folders.
+DATA_DIR_NAMES = ("data", "data hw4", ".")
 SEARCH_DEPTH = 3
 
 # Size order is fixed by the catalogue; sorting alphabetically would read as L, M, S, XL.
@@ -33,7 +37,7 @@ SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL"]
 
 def _candidate_data_dirs() -> list[Path]:
     ancestors = [PROJECT_DIR, *PROJECT_DIR.parents[:SEARCH_DEPTH]]
-    return [base / name for base in ancestors for name in (DATA_DIR_NAME, ".")]
+    return [base / name for base in ancestors for name in DATA_DIR_NAMES]
 
 
 @lru_cache(maxsize=1)

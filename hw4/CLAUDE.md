@@ -39,9 +39,11 @@ inside that workspace, not in a standalone clone of this repo.
 - `python` is not on PATH, and the system `python3` is 3.9, too old for this code's type
   hints. Use this folder's `.venv/bin/python`. The venv exists (Python 3.14.7) with
   `requirements.txt` installed: fastapi 0.143, uvicorn 0.54, pydantic 2.14, pydantic-ai-slim
-  2.55, openai 3.29, pwdlib 0.3.1 + argon2-cffi 25.1, python-dotenv. SQLite 3.50.4.
+  2.55, openai 3.29, python-dotenv, email-validator, pillow. SQLite 3.50.4. `pwdlib` and
+  `argon2-cffi` are also in the venv from an early plan that was dropped — the assignment
+  mandates PBKDF2, so nothing imports them and they are **not** in `requirements.txt`.
 - Environment smoke check (free, no API calls), from this folder:
-  `.venv/bin/python -c "import fastapi, uvicorn, pydantic_ai, app_config; from pwdlib import PasswordHash"`
+  `.venv/bin/python -c "import fastapi, uvicorn, pydantic_ai, PIL, app_config"`
 - `npm` and `npx` from nvm are blocked by the sandbox. Use the Node v24.20.0 copy in the
   course workspace one level up: `PATH="../../../.tools/node/bin:$PATH"
   npm_config_cache="../../../.tools/npm-cache" npm ...` (absolute paths if the shell is elsewhere).

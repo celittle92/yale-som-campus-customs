@@ -9,8 +9,9 @@
 *.pem
 *.key
 
-# The assignment forbids committing the database or the product images. The README asks
-# you to unpack them here, beside hw4/, so they are ignored here by name as well.
+# The assignment forbids committing the database or the product images. They may be
+# unpacked inside hw4/ or beside it, so both names are ignored at this level too.
+data/
 data hw4/
 *.db
 *.sqlite

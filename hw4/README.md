@@ -51,22 +51,27 @@ rules, and the full specification.
 forbids committing them and this repo is public, so you need to add them yourself. You
 need `campus_customs.db` and the `products/` folder of 102 JPEGs.
 
-Put them together in a folder called `data hw4`, and put that folder **next to `hw4/`** —
-that is, at the root of your clone:
+Put them together in a folder called `data`, inside `hw4/`:
 
 ```text
-yale-som-campus-customs/
-├── hw4/                       # this folder
-└── data hw4/
+hw4/
+├── backend/
+├── frontend/
+├── output/
+└── data/                      # not in git
     ├── campus_customs.db
     └── products/
         ├── basic-hoodie-big-yale.jpg
         └── ...
 ```
 
-The backend searches for `data hw4/` in each folder above itself, so beside `hw4/`,
-beside the repo, or one level further up all work. To put it somewhere else entirely, set
-`CAMPUS_CUSTOMS_DATA` to the folder holding `campus_customs.db`.
+That is the layout the assignment specifies, and it is what the backend looks for first.
+
+If your copy is somewhere else, it will still be found: the backend checks each folder
+above itself for one named `data` or `data hw4`, so beside `hw4/`, beside the repo, or a
+level further up all work too. To put it anywhere else, set `CAMPUS_CUSTOMS_DATA` to the
+folder holding `campus_customs.db`. If it cannot find the database, the error lists every
+folder it checked.
 
 Nothing in this project writes to the catalogue or the inventory — those connections are
 opened read-only. Accounts and chat history are written to the same file, because that is
