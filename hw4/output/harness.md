@@ -595,11 +595,19 @@ Two notes worth keeping:
   coursework account on localhost; worth naming so it is a known gap rather than an
   assumed protection.
 
+### The test accounts stay, deliberately
+
+Three accounts created while building this are still in the `users` table — ids 4, 5 and
+6, the last one Christine's own. **They are kept on purpose, not left behind.** The
+problem asks for the surest check to be logging in both as the seeded test user and as a
+brand-new account created through the running app; these rows are what that check
+produced. Deleting them would remove the evidence that the flow was exercised end to end.
+
+The database is not committed, so none of this is public, and no password or hash appears
+anywhere in this repository.
+
 ### Still open after this problem
 
-- Three accounts created during testing are in the `users` table (ids 4, 5 and 6; id 6 is
-  Christine's). They can be deleted on request and were left in place rather than removed
-  unasked.
 - No rate limiting on login attempts, so password guessing is unthrottled.
 - Sessions do not survive a backend restart, and there is no expiry or "log out everywhere".
 - There is no password reset and no email verification. Neither is asked for by the
